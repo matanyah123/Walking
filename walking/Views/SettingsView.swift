@@ -1,0 +1,343 @@
+//  SettingsView.swift
+//  walking
+//
+//  Created by ‏מתניה ‏אליהו on 14/05/2025.
+//
+
+import SwiftUI
+import UIKit
+
+
+// MARK: - AppIcon Definition
+struct AppIcon: Identifiable {
+  let id = UUID()
+  let name: String
+  let displayName: String
+}
+
+
+// MARK: - Settings View
+struct SettingsView: View {
+  @Binding var doYouNeedAGoal: Bool
+  @State private var showingColorPresets = false
+  @AppStorage(SharedKeys.goalTarget, store: UserDefaults(suiteName: "group.com.matanyah.WalkTracker")) var goalTarget = 5000
+  @AppStorage("notificationsEnabled", store: UserDefaults(suiteName: "group.com.matanyah.WalkTracker")) private var notificationsEnabled: Bool = true
+  @AppStorage("active_icon", store: UserDefaults(suiteName: "group.com.matanyah.WalkTracker")) private var activeAppIcon: String = "AppIcon"
+  @AppStorage("accentColor", store: UserDefaults(suiteName: "group.com.matanyah.WalkTracker")) private var storedColorData: Data = {
+    try! JSONEncoder().encode(CodableColor.lavenderBlue) // Default to Lavender Blue 💜
+  }()
+
+  private var accentColor: Color {
+    (try? JSONDecoder().decode(CodableColor.self, from: storedColorData))?.color ?? Color.blue
+  }
+
+  private func saveAccentColor(_ newColor: Color) {
+    if let encoded = try? JSONEncoder().encode(CodableColor(newColor)) {
+      storedColorData = encoded
+      // redundant but safe
+      UserDefaults(suiteName: "group.com.matanyah.WalkTracker")?.set(encoded, forKey: "accentColor")
+    }
+  }
+
+  private func savePresetColor(_ preset: CodableColor) {
+    if let encoded = try? JSONEncoder().encode(preset) {
+      storedColorData = encoded
+      UserDefaults(suiteName: "group.com.matanyah.WalkTracker")?.set(encoded, forKey: "accentColor")
+    }
+  }
+
+  private let customIcons: [AppIcon] = [
+    AppIcon(name: "AppIcon", displayName: "Default (white)"),
+    AppIcon(name: "AppIcon-Blue", displayName: "Lavender Blue"),
+    AppIcon(name: "AppIcon-Mint", displayName: "Turquoise Mint"),
+    AppIcon(name: "AppIcon-Orange", displayName: "Vibrant Orange")
+  ]
+
+  var body: some View {
+    NavigationStack {
+      List {
+        // Goals & Targets Section
+        Section(header: Text("Goals & Targets")) {
+          Toggle(isOn: $doYouNeedAGoal) {
+            VStack(alignment: .leading) {
+              Text("Require Setting a Goal")
+              Text("If enabled, you'll need to set a meter goal before tracking")
+                .font(.caption)
+                .foregroundColor(.secondary)
+            }
+          }
+
+          if doYouNeedAGoal {
+            Stepper(value: $goalTarget, in: 1000...20000, step: 500) {
+              VStack(alignment: .leading) {
+                Text("Default Goal: \(goalTarget) meter")
+                Text("Starting target for your daily walks")
+                  .font(.caption)
+                  .foregroundColor(.secondary)
+              }
+            }
+          }
+        }
+
+        // Appearance Section
+        Section(header: Text("Appearance"), footer: Text("The accent color will be used throughout the app")) {
+          ColorPicker("Accent Color", selection: Binding(
+            get: { accentColor },
+            set: { saveAccentColor($0) }
+          ))
+
+          Button("Choose Preset Colors") {
+            showingColorPresets.toggle()
+          }
+          .sheet(isPresented: $showingColorPresets) {
+            PresetColorsView(selectColor: savePresetColor)
+              .presentationDetents([.medium ,.large])
+              .presentationDragIndicator(.visible)
+          }
+        }
+
+        // App Icon Section
+        Section(header: Text("App Icon")) {
+          Picker(selection: $activeAppIcon, label: Text("Select App Icon")) {
+            ForEach(customIcons) { icon in
+              Text(icon.displayName)
+                .tag(icon.name)
+            }
+          }
+          .id(storedColorData)
+          .onChange(of: activeAppIcon) {
+            UIApplication.shared.setAlternateIconName(
+              activeAppIcon == "AppIcon" ? nil : activeAppIcon
+            )
+          }
+        }
+
+        // Additional Settings Section
+        Section(header: Text("Additional Settings")) {
+          Toggle("Enable Notifications", isOn: $notificationsEnabled)
+
+          NavigationLink(destination: AboutView()) {
+            Label("About This App", systemImage: "info.circle")
+          }
+
+          NavigationLink(destination: HelpView()) {
+            Label("Help & Support", systemImage: "questionmark.circle")
+          }
+        }
+      }
+      .navigationTitle("Settings")
+      .tint(Color.accentFromSettings)
+    }
+  }
+}
+
+
+// MARK: - Preset Colors View
+struct PresetColorsView: View {
+  @Environment(\.dismiss) var dismiss
+  var selectColor: (CodableColor) -> Void
+
+  // Use same suite for custom colors storage
+  @AppStorage("customColors", store: UserDefaults(suiteName: "group.com.matanyah.WalkTracker"))
+  private var savedColorsData: Data = Data()
+
+  @State private var customColors: [CodableColor] = []
+  @State private var showingColorPicker = false
+  @State private var newColor: Color = .blue
+  @State private var showDeleteAlert = false
+
+  private let presets: [(name: String, color: CodableColor)] = [
+    ("Lavender Blue", CodableColor.lavenderBlue),
+    ("Turquoise Mint", CodableColor.turquoiseMint),
+    ("Vibrant Orange", CodableColor.vibrantOrange)
+  ]
+
+  private func loadSavedColors() {
+    if let decoded = try? JSONDecoder().decode([CodableColor].self, from: savedColorsData) {
+      customColors = decoded
+    }
+  }
+
+  private func saveColors() {
+    if let encoded = try? JSONEncoder().encode(customColors) {
+      savedColorsData = encoded
+    }
+  }
+
+  private func addCustomColor() {
+    let codable = CodableColor(newColor)
+    if !customColors.contains(codable) {
+      customColors.append(codable)
+      saveColors()
+    }
+  }
+
+  private func deleteColor(at offsets: IndexSet) {
+    customColors.remove(atOffsets: offsets)
+    saveColors()
+  }
+
+  var body: some View {
+    NavigationStack {
+      List {
+        Section(header: Text("Presets")) {
+          ForEach(presets, id: \.name) { preset in
+            Button {
+              selectColor(preset.color)
+              dismiss()
+            } label: {
+              HStack {
+                Text(preset.name)
+                Spacer()
+                Circle()
+                  .fill(preset.color.color)
+                  .frame(width: 24, height: 24)
+              }
+            }
+            .buttonStyle(BorderlessButtonStyle())
+          }
+        }
+
+        if !customColors.isEmpty {
+          Section(header: Text("Custom Colors")) {
+            ForEach(customColors, id: \.self) { color in
+              Button {
+                selectColor(color)
+                dismiss()
+              } label: {
+                HStack {
+                  Text("Custom")
+                  Spacer()
+                  Circle()
+                    .fill(color.color)
+                    .frame(width: 24, height: 24)
+                }
+              }
+              .buttonStyle(BorderlessButtonStyle())
+            }
+            .onDelete(perform: deleteColor)
+          }
+        }
+      }
+      .navigationTitle("Choose Preset")
+      .toolbar {
+        ToolbarItem(placement: .navigationBarTrailing) {
+          HStack {
+            ColorPicker("Create New Color", selection: $newColor, supportsOpacity: false)
+              .labelsHidden()
+              .onChange(of: newColor) {
+                addCustomColor()
+              }
+
+            if !customColors.isEmpty {
+              Button {
+                showDeleteAlert = true
+              } label: {
+                Image(systemName: "trash")
+                  .foregroundColor(.red)
+              }
+              .accessibilityLabel("Delete All Custom Colors")
+              .confirmationDialog("Are you sure you want to delete all custom colors?",
+                                  isPresented: $showDeleteAlert,
+                                  titleVisibility: .visible) {
+                Button("Delete All", role: .destructive) {
+                  customColors.removeAll()
+                  saveColors()
+                }
+                Button("Cancel", role: .cancel) { }
+              }
+            }
+          }
+        }
+      }
+      .onAppear(perform: loadSavedColors)
+    }
+  }
+}
+
+
+
+// MARK: - About View
+struct AboutView: View {
+  var body: some View {
+    ScrollView {
+      VStack(alignment: .leading, spacing: 20) {
+        Text("Walking App")
+          .font(.largeTitle)
+          .fontWeight(.bold)
+
+        Text("Version 1.0")
+          .font(.subheadline)
+
+        Text("This app helps you track your daily walking goals and maintain a healthy lifestyle through regular physical activity.")
+          .padding(.top)
+
+        Text("© 2025 Matanyah Eliyahu\nAll rights reserved.")
+          .font(.caption)
+          .padding(.top, 40)
+      }
+      .padding()
+      .frame(maxWidth: .infinity, alignment: .leading)
+    }
+    .navigationTitle("About")
+  }
+}
+
+
+
+
+// MARK: - Help View
+struct HelpView: View {
+  var body: some View {
+    List {
+      Section(header: Text("Frequently Asked Questions")) {
+        DisclosureGroup("How do I set a daily goal?") {
+          Text("Go to the Settings tab and enable 'Require Setting a Daily Goal'. Then use the stepper to set your target step count.")
+            .padding(.vertical, 8)
+        }
+
+        DisclosureGroup("How does the app track my steps?") {
+          Text("The app uses your device's built-in pedometer to track steps. Make sure to give the app permission to access motion & fitness data in your device settings.")
+            .padding(.vertical, 8)
+        }
+
+        DisclosureGroup("Why should I customize the accent color?") {
+          Text("The accent color is used throughout the app's interface. Choose a color that you find visually pleasing or that helps with visibility.")
+            .padding(.vertical, 8)
+        }
+      }
+
+      Section(header: Text("Contact Support")) {
+        Button {
+          if let emailURL = URL(string: "matanyah.k8@gmail.com") {
+            UIApplication.shared.open(emailURL)
+          }
+        } label: {
+          Label("Email Support", systemImage: "envelope")
+        }
+
+        Button {
+          if let websiteURL = URL(string: "https://github.com/matanyah123") {
+            UIApplication.shared.open(websiteURL)
+          }
+        } label: {
+          Label("Me in Github", systemImage: "globe")
+        }
+      }
+    }
+    .navigationTitle("Help & Support")
+  }
+}
+
+
+
+
+// MARK: - Preview
+#Preview("Settings View") {
+  @Previewable @State var doYouNeedAGoal: Bool = false
+  SettingsView(doYouNeedAGoal: $doYouNeedAGoal)
+    .preferredColorScheme(.dark)
+}
+#Preview("Preset Colors") {
+  PresetColorsView(selectColor: { _ in })
+}
