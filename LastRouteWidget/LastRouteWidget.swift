@@ -61,6 +61,9 @@ struct LastRouteWidgetEntryView: View {
   @Environment(\.widgetFamily) var widgetFamily
 
   var body: some View {
+    let route = (entry.walk?.route ?? []).map {
+        CLLocation(latitude: $0.latitude, longitude: $0.longitude)
+    }
     ZStack {
       LinearGradient(
         gradient: Gradient(colors: [Color.green.opacity(0.8), Color.orange.opacity(0.6)]),
@@ -68,32 +71,34 @@ struct LastRouteWidgetEntryView: View {
         endPoint: .bottomTrailing
       ).colorInvert()
 
+      if widgetFamily != .systemSmall {
+        Canvas { context, size in
+          let path = createPath(from: route, in: size)
+          context.stroke(
+            path,
+            with: .color(.white.opacity(0.85)),
+            style: StrokeStyle(lineWidth: 2, lineCap: .round, lineJoin: .round)
+          )
+        }
+        .aspectRatio(1, contentMode: .fit)
+        .padding(16)
+      }
+
       switch widgetFamily {
       case .systemMedium:
         HStack {
           mainWalkInfo
           Spacer()
-          VStack {
-            Image(systemName: "figure.walk")
-              .font(.largeTitle)
-              .bold()
-          }
-          .padding(.trailing, 12)
         }
         .padding(16)
 
       case .systemLarge:
-        VStack(alignment: .leading, spacing: 8) {
-          mainWalkInfo
-          Spacer()
-          HStack {
+        HStack(alignment: .top){
+          VStack(alignment: .leading) {
+            mainWalkInfo
             Spacer()
-            VStack(alignment: .trailing) {
-              Image(systemName: "figure.run")
-                .font(.largeTitle)
-                .bold()
-            }
           }
+          Spacer()
         }
         .padding(16)
 
@@ -108,7 +113,10 @@ struct LastRouteWidgetEntryView: View {
   }
 
   private var mainWalkInfo: some View {
-    VStack(alignment: .leading, spacing: 4) {
+    let route: [CLLocation] = (entry.walk?.route ?? []).map {
+      CLLocation(latitude: $0.latitude, longitude: $0.longitude)
+    }
+    return VStack(alignment: .leading, spacing: 4) {
       if let walk = entry.walk {
         Text("Last Walk")
           .font(.title3)
@@ -116,10 +124,29 @@ struct LastRouteWidgetEntryView: View {
           .foregroundColor(.white)
           .padding(.bottom, 2)
 
-        Text("\(Image(systemName: "point.bottomleft.forward.to.point.topright.scurvepath")) \(walk.distance >= 1000 ? String(format: "%.1f KM", walk.distance / 1000) : String(format: "%.0f M", walk.distance))")
-          .font(.body)
-          .foregroundColor(.white)
-          .fontWeight(.bold)
+        if widgetFamily != .systemSmall {
+          Text("\(Image(systemName: "point.bottomleft.forward.to.point.topright.scurvepath")) \(walk.distance >= 1000 ? String(format: "%.1f KM", walk.distance / 1000) : String(format: "%.0f M", walk.distance))")
+            .font(.body)
+            .foregroundColor(.white)
+            .fontWeight(.bold)
+        } else {
+          HStack{
+            Canvas { context, size in
+              let path = createPath(from: route, in: size)
+              context.stroke(
+                path,
+                with: .color(.white.opacity(0.85)),
+                style: StrokeStyle(lineWidth: 2, lineCap: .round, lineJoin: .round)
+              )
+            }
+            .frame(width: 10)
+            Text(" \(walk.distance >= 1000 ? String(format: "%.1f KM", walk.distance / 1000) : String(format: "%.0f M", walk.distance))")
+              .font(.body)
+              .foregroundColor(.white)
+              .fontWeight(.bold)
+          }
+          .frame(height: 15 )
+        }
 
         Text("\(Image(systemName: "shoeprints.fill")) \(walk.steps)")
           .font(.callout)
@@ -154,6 +181,55 @@ struct LastRouteWidgetEntryView: View {
   }
 }
 
+func createPath(from locations: [CLLocation], in size: CGSize) -> Path {
+    guard locations.count > 1 else { return Path() }
+
+    // Extract latitude and longitude values
+    let latitudes = locations.map { $0.coordinate.latitude }
+    let longitudes = locations.map { $0.coordinate.longitude }
+
+    guard let minLat = latitudes.min(),
+          let maxLat = latitudes.max(),
+          let minLon = longitudes.min(),
+          let maxLon = longitudes.max() else {
+        return Path()
+    }
+
+    // Convert degrees to meters using approximate conversion:
+    // 1 degree latitude ≈ 111,000 meters
+    // longitude scaling depends on latitude (cosine)
+    let midLat = (minLat + maxLat) / 2.0
+    let latMeters = (maxLat - minLat) * 111_000
+    let lonMeters = (maxLon - minLon) * 111_000 * cos(midLat * .pi / 180)
+
+    // Calculate scale factor to fit path inside the size, preserving aspect ratio
+    let scaleX = size.width / CGFloat(lonMeters)
+    let scaleY = size.height / CGFloat(latMeters)
+    let scale = min(scaleX, scaleY)
+
+    // Calculate offsets to center the path inside the canvas
+    let offsetX = (size.width - CGFloat(lonMeters) * scale) / 2
+    let offsetY = (size.height - CGFloat(latMeters) * scale) / 2
+
+    func convert(_ location: CLLocation) -> CGPoint {
+        let xMeters = (location.coordinate.longitude - minLon) * 111_000 * cos(midLat * .pi / 180)
+        let yMeters = (location.coordinate.latitude - minLat) * 111_000
+        // y inverted because SwiftUI origin is top-left, latitude grows north (up)
+        return CGPoint(
+            x: offsetX + CGFloat(xMeters) * scale,
+            y: size.height - (offsetY + CGFloat(yMeters) * scale)
+        )
+    }
+
+    var path = Path()
+    path.move(to: convert(locations[0]))
+    for location in locations.dropFirst() {
+        path.addLine(to: convert(location))
+    }
+
+    return path
+}
+
 struct LastRouteWidget_Previews: PreviewProvider {
     static var previews: some View {
         LastRouteWidgetEntryView(entry: WalkEntry(
@@ -173,7 +249,7 @@ struct LastRouteWidget_Previews: PreviewProvider {
                 ]
             ), goalTarget: 5000
         ))
-        .previewContext(WidgetPreviewContext(family: .systemLarge))
+        .previewContext(WidgetPreviewContext(family: .systemSmall))
         .preferredColorScheme(.dark)
     }
 }

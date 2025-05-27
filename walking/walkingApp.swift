@@ -28,6 +28,8 @@ struct walkingApp: App {
   }
 }
 
+//boooo
+
 #Preview {
   @Previewable @State var deepLink: String? = "start"
   ContentView(deepLink: $deepLink)

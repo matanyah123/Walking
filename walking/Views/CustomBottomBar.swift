@@ -24,7 +24,6 @@ struct CustomBottomBar: View {
     @State private var timer: Timer? = nil
     @Binding var trackingMode: Int
     @Binding var deepLink: String?
-    @AppStorage("mapStyleDarkMode", store: UserDefaults(suiteName: "group.com.matanyah.WalkTracker")) var mapStyleDarkMode: Bool = true
 
     var body: some View {
         HStack(spacing: 10) {

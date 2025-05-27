@@ -9,7 +9,7 @@ struct LastRouteWidgetAttributes: ActivityAttributes {
 
   var name: String
   var accentColor: CodableColor
-  var currentGoalOverride: Double    // <<< add this here!
+  var currentGoalOverride: Double
 }
 
 
