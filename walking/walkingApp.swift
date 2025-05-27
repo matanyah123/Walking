@@ -24,19 +24,14 @@ struct walkingApp: App {
             deepLink = "start"
           }
         }
-        .onOpenURL { url in
-            if url.scheme == "walking" && url.host == "start" {
-                ContentViewModel.shared.deepLinkStart()
-            }
-        }
     }
   }
 }
 
-
 #Preview {
   @Previewable @State var deepLink: String? = "start"
   ContentView(deepLink: $deepLink)
+    .preferredColorScheme(.dark)
 }
 
 class AppTheme: ObservableObject {

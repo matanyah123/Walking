@@ -10,52 +10,40 @@ import SwiftUI
 import WidgetKit
 
 struct LastRouteWidgetControl: ControlWidget {
-    var body: some ControlWidgetConfiguration {
-        StaticControlConfiguration(
-            kind: "-01.walking.LastRouteWidget",
-            provider: Provider()
-        ) {
-            ControlWidgetButton(
-                "Start Walking",
-                action: StartWalkingIntent()
-            ) { _ in
-                Label("Start", systemImage: "figure.walk")
-            }
-        }
-        .displayName("Walking")
-        .description("Start walking tracking.")
+  var body: some ControlWidgetConfiguration {
+    StaticControlConfiguration(
+      kind: "-01.walking.LastRouteWidget",
+      provider: Provider()
+    ) {
+      ControlWidgetButton(
+        "Start Walking",
+        action: StartWalkingIntent()
+      ) {_ in
+        Label("Start", systemImage: "figure.walk")
+      }
     }
+    .displayName("Walking")
+    .description("Start walking tracking.")
+  }
 }
 
 extension LastRouteWidgetControl {
-    struct Provider: ControlValueProvider {
-        var previewValue: Void {}
+  struct Provider: ControlValueProvider {
+    var previewValue: Void {}
 
-        func currentValue() async throws -> Void {
-            // No state needed for a button
-            return ()
-        }
+    func currentValue() async throws -> Void {
+      // No state needed for a button
+      return ()
     }
+  }
 }
 
 struct StartWalkingIntent: AppIntent {
-    static let title: LocalizedStringResource = "Start Walking"
-    static let openAppWhenRun: Bool = true
+  static let title: LocalizedStringResource = "Start Walking"
 
-    func perform() async throws -> some IntentResult {
-        // Method 1: Use the shared manager directly if available
-        WalkSessionManager.shared.start()
-
-        // Method 2: Set a flag that the main app can check
-        //UserDefaults(suiteName: "group.com.matanyah.WalkTracker")?.set(true, forKey: "shouldStartWalking")
-
-        /* Method 3: Use a URL scheme to communicate with the main app
-        if let url = URL(string: "walking://start") {
-            await UIApplication.shared.open(url)
-        }
-         */
-
-        print("Walk started from widget!")
-        return .result()
-    }
+  func perform() async throws -> some IntentResult {
+    WalkSessionManager.shared.start()
+    print("Walk started!")
+    return .result()
+  }
 }

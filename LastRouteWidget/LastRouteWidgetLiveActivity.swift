@@ -35,11 +35,13 @@ struct LastRouteWidgetLiveActivity: Widget {
           .frame(width: 40, height: (goal > 0) ? 40 : 30)
           .bold()
           .foregroundStyle(Color.black.opacity(0.6))
+        /*
         Button{
           //.toggleTracking()
         }label:{
           Image(systemName: "pause.fill")
         }
+         */
       }
       .padding()
       .tint(Color.black.opacity(0.6))

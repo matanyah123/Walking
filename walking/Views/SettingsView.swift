@@ -23,6 +23,7 @@ struct SettingsView: View {
   @AppStorage(SharedKeys.goalTarget, store: UserDefaults(suiteName: "group.com.matanyah.WalkTracker")) var goalTarget = 5000
   @AppStorage("notificationsEnabled", store: UserDefaults(suiteName: "group.com.matanyah.WalkTracker")) private var notificationsEnabled: Bool = true
   @AppStorage("active_icon", store: UserDefaults(suiteName: "group.com.matanyah.WalkTracker")) private var activeAppIcon: String = "AppIcon"
+  @AppStorage("mapStyleDarkMode", store: UserDefaults(suiteName: "group.com.matanyah.WalkTracker")) private var mapStyleDarkMode: Bool = true
   @AppStorage("accentColor", store: UserDefaults(suiteName: "group.com.matanyah.WalkTracker")) private var storedColorData: Data = {
     try! JSONEncoder().encode(CodableColor.lavenderBlue) // Default to Lavender Blue 💜
   }()
@@ -50,8 +51,29 @@ struct SettingsView: View {
     AppIcon(name: "AppIcon", displayName: "Default (white)"),
     AppIcon(name: "AppIcon-Blue", displayName: "Lavender Blue"),
     AppIcon(name: "AppIcon-Mint", displayName: "Turquoise Mint"),
-    AppIcon(name: "AppIcon-Orange", displayName: "Vibrant Orange")
+    AppIcon(name: "AppIcon-Orange", displayName: "Vibrant Orange"),
+    AppIcon(name: "AppIcon-Green", displayName: "Lime Green")
+
   ]
+  private var currentCodableColor: CodableColor? {
+    try? JSONDecoder().decode(CodableColor.self, from: storedColorData)
+  }
+  private var accentColorName: String {
+    switch currentCodableColor {
+    case CodableColor.lavenderBlue:
+      return "Lavender Blue"
+    case CodableColor.turquoiseMint:
+      return "Turquoise Mint"
+    case CodableColor.vibrantOrange:
+      return "Vibrant Orange"
+    case CodableColor.limeGreen:
+      return "Lime Green"
+    case .none:
+      return "Unknown"
+    default:
+      return "Custom Color"
+    }
+  }
 
   var body: some View {
     NavigationStack {
@@ -86,13 +108,26 @@ struct SettingsView: View {
             set: { saveAccentColor($0) }
           ))
 
-          Button("Choose Preset Colors") {
-            showingColorPresets.toggle()
+          HStack {
+              Button("Choose Preset Colors") {
+                  showingColorPresets.toggle()
+              }
+              Spacer()
+              Text(accentColorName)
+                  .font(.subheadline)
+                  .foregroundColor(.secondary)
           }
+
           .sheet(isPresented: $showingColorPresets) {
             PresetColorsView(selectColor: savePresetColor)
               .presentationDetents([.medium ,.large])
               .presentationDragIndicator(.visible)
+          }
+        }
+
+        Section(header: Text("map style"), footer: Text("The Appearance will be used on any map")) {
+          Toggle(isOn: $mapStyleDarkMode) {
+            Text("Dark Mode")
           }
         }
 
@@ -142,14 +177,18 @@ struct PresetColorsView: View {
   private var savedColorsData: Data = Data()
 
   @State private var customColors: [CodableColor] = []
-  @State private var showingColorPicker = false
-  @State private var newColor: Color = .blue
+  @State private var newColor: Color = .teal
   @State private var showDeleteAlert = false
+
+  @State private var editingColor: CodableColor?
+  @State private var editingName: String = ""
+  @State private var showEditNameSheet = false
 
   private let presets: [(name: String, color: CodableColor)] = [
     ("Lavender Blue", CodableColor.lavenderBlue),
     ("Turquoise Mint", CodableColor.turquoiseMint),
-    ("Vibrant Orange", CodableColor.vibrantOrange)
+    ("Vibrant Orange", CodableColor.vibrantOrange),
+    ("Lime Green", CodableColor.limeGreen)
   ]
 
   private func loadSavedColors() {
@@ -206,7 +245,7 @@ struct PresetColorsView: View {
                 dismiss()
               } label: {
                 HStack {
-                  Text("Custom")
+                  Text(color.name ?? "Custom")
                   Spacer()
                   Circle()
                     .fill(color.color)
@@ -214,6 +253,14 @@ struct PresetColorsView: View {
                 }
               }
               .buttonStyle(BorderlessButtonStyle())
+              .swipeActions(edge: .leading, allowsFullSwipe: true) {
+                  Button("Edit") {
+                      editingColor = color
+                      editingName = color.name ?? ""
+                      showEditNameSheet = true
+                  }
+                  .tint(.blue)
+              }
             }
             .onDelete(perform: deleteColor)
           }
@@ -251,6 +298,32 @@ struct PresetColorsView: View {
         }
       }
       .onAppear(perform: loadSavedColors)
+      .sheet(isPresented: $showEditNameSheet) {
+        NavigationStack {
+          Form {
+            TextField("New name", text: $editingName)
+          }
+          .navigationTitle("Edit Name")
+          .toolbar {
+            ToolbarItem(placement: .confirmationAction) {
+              Button("Save") {
+                  if let index = customColors.firstIndex(of: editingColor ?? CodableColor(.clear)) {
+                      customColors[index].name = editingName
+                      saveColors()
+                  }
+                  showEditNameSheet = false
+              }
+            }
+            ToolbarItem(placement: .cancellationAction) {
+              Button("Cancel") {
+                showEditNameSheet = false
+              }
+            }
+          }
+        }
+        .presentationDetents([.medium])
+        .presentationDragIndicator(.visible)
+      }
     }
   }
 }

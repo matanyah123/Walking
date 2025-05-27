@@ -5,21 +5,52 @@ import MapKit
 import UIKit
 import Combine
 
-// MARK: - Updated ContentView
-struct ContentView: View {
-    @Binding var deepLink: String?
-    @StateObject private var sessionManager = WalkSessionManager.shared
+enum Tab {
+    case home, walk, settings
+}
 
-    // Use the shared instances from the session manager
-  private var viewModel: ContentViewModel { sessionManager.contentViewModel }
-    private var locationManager: LocationManager { sessionManager.locationManager }
-    private var motionManager: MotionManager { sessionManager.motionManager }
-    private var liveActivityManager: LiveActivityManager { sessionManager.liveActivityManager }
-
-    var progress: Double {
-        guard let goal = viewModel.goal, goal > 0 else { return 0 }
-        return locationManager.distance / goal
+class ContentViewModel: ObservableObject {
+  @Published var selectedTab: Tab = .home
+  @Published var isStatsBarOpen = false
+  @Published var offset: CGFloat = 0
+  @Published var tracking = false
+  @Published var started = false
+  @Published var goal: Double? {
+    didSet {
+      if let goal = goal {
+        UserDefaults.shared.set(goal, forKey: SharedKeys.currentGoalOverride)
+      } else {
+        UserDefaults.shared.removeObject(forKey: SharedKeys.currentGoalOverride)
+      }
+      WidgetCenter.shared.reloadAllTimelines()
     }
+  }
+
+  init() {
+    // Load the session override if it exists, otherwise fall back to default
+    let override = UserDefaults.shared.object(forKey: SharedKeys.currentGoalOverride) as? Double
+    self.goal = override
+  }
+  @Published var isKeyboardVisible = false
+  @Published var trackingMode: Int = 0
+
+  @AppStorage("doYouNeedAGoal") var doYouNeedAGoal: Bool = false
+  @AppStorage("mapStyleDarkMode", store: UserDefaults(suiteName: "group.com.matanyah.WalkTracker")) var mapStyleDarkMode: Bool = true
+  @AppStorage(SharedKeys.currentGoalOverride, store: .shared)
+  var goalTarget: Int = 5000
+}
+
+struct ContentView: View {
+  @Binding var deepLink: String?
+  @StateObject private var viewModel = ContentViewModel()
+  @StateObject private var locationManager = LocationManager()
+  @StateObject private var motionManager = MotionManager()
+  @StateObject var liveActivityManager = LiveActivityManager()
+
+  var progress: Double {
+    guard let goal = viewModel.goal, goal > 0 else { return 0 }
+    return locationManager.distance / goal
+  }
 
 
   var body: some View {
@@ -29,15 +60,17 @@ struct ContentView: View {
       }
 
       CustomBottomBar(
-          started: $sessionManager.contentViewModel.started,
-          tracking: $sessionManager.contentViewModel.tracking,
-          doYouNeedAGoal: $sessionManager.contentViewModel.doYouNeedAGoal,
-          goal: $sessionManager.contentViewModel.goal,
-          goalTarget: sessionManager.contentViewModel.goalTarget,
-          selectedTab: $sessionManager.contentViewModel.selectedTab,
-          trackingMode: $sessionManager.contentViewModel.trackingMode,
-          deepLink: $deepLink
+        started: $viewModel.started,
+        tracking: $viewModel.tracking,
+        doYouNeedAGoal: $viewModel.doYouNeedAGoal,
+        goal: $viewModel.goal,
+        goalTarget: viewModel.goalTarget,
+        selectedTab: $viewModel.selectedTab,
+        locationManager: locationManager,
+        motionManager: motionManager,
+        liveActivityManager: liveActivityManager, trackingMode: $viewModel.trackingMode, deepLink: $deepLink
       )
+      //.colorScheme(viewModel.mapStyleDarkMode ? .dark : .light)
       .padding(.bottom, 8)
       .offset(y: viewModel.offset)
     }
@@ -81,7 +114,7 @@ struct ContentView: View {
     case .walk:
       WalkHistoryView()
     case .settings:
-      SettingsView(doYouNeedAGoal: $sessionManager.contentViewModel.doYouNeedAGoal)
+      SettingsView(doYouNeedAGoal: $viewModel.doYouNeedAGoal)
     }
   }
 
@@ -90,7 +123,8 @@ struct ContentView: View {
     ZStack {
       MapView(route: locationManager.route,
               currentLocation: locationManager.currentLocation,
-              showUserLocation: true, trackingMode: $sessionManager.contentViewModel.trackingMode)
+              showUserLocation: true, trackingMode: $viewModel.trackingMode)
+      .colorScheme(viewModel.mapStyleDarkMode ? .dark : .light)
       .ignoresSafeArea()
       .onTapGesture {
 
@@ -103,12 +137,11 @@ struct ContentView: View {
       VStack {
         HStack {
           StatsBarView(
-              isStatsBarOpen: $sessionManager.contentViewModel.isStatsBarOpen,
-              started: $sessionManager.contentViewModel.started,
-              tracking: $sessionManager.contentViewModel.tracking,
-              goal: sessionManager.contentViewModel.goal,
-              locationManager: locationManager,
-              motionManager: motionManager
+            isStatsBarOpen: $viewModel.isStatsBarOpen,
+            started: $viewModel.started, tracking: $viewModel.tracking,
+            goal: viewModel.goal,
+            locationManager: locationManager,
+            motionManager: motionManager
           )
           .onTapGesture {
             DispatchQueue.main.asyncAfter(deadline: .now() + 0.09) {

@@ -2,7 +2,6 @@
 import CoreMotion
 
 class MotionManager: ObservableObject {
-  static let shared = MotionManager()
     @Published var stepCount: Int = 0
     private var pedometer = CMPedometer()
     private var startDate: Date?

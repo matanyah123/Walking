@@ -3,7 +3,6 @@ import Foundation
 import CoreLocation
 
 class LocationManager: NSObject, ObservableObject, CLLocationManagerDelegate {
-  static let shared = LocationManager()
   private var locationManager: CLLocationManager = CLLocationManager()
   @Published var route: [CLLocation] = []
   @Published var currentLocation: CLLocation?
