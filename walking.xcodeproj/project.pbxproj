@@ -16,6 +16,7 @@
 		98D10E462BFB7C85009918EF /* walkingTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = 98D10E452BFB7C85009918EF /* walkingTests.swift */; };
 		98D10E502BFB7C85009918EF /* walkingUITests.swift in Sources */ = {isa = PBXBuildFile; fileRef = 98D10E4F2BFB7C85009918EF /* walkingUITests.swift */; };
 		98D10E522BFB7C85009918EF /* walkingUITestsLaunchTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = 98D10E512BFB7C85009918EF /* walkingUITestsLaunchTests.swift */; };
+		98E02CD52DE76EB60003A5EE /* README.md in Resources */ = {isa = PBXBuildFile; fileRef = 98E02CD42DE76EAB0003A5EE /* README.md */; };
 /* End PBXBuildFile section */
 
 /* Begin PBXContainerItemProxy section */
@@ -72,6 +73,7 @@
 		98D10E4B2BFB7C85009918EF /* walkingUITests.xctest */ = {isa = PBXFileReference; explicitFileType = wrapper.cfbundle; includeInIndex = 0; path = walkingUITests.xctest; sourceTree = BUILT_PRODUCTS_DIR; };
 		98D10E4F2BFB7C85009918EF /* walkingUITests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = walkingUITests.swift; sourceTree = "<group>"; };
 		98D10E512BFB7C85009918EF /* walkingUITestsLaunchTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = walkingUITestsLaunchTests.swift; sourceTree = "<group>"; };
+		98E02CD42DE76EAB0003A5EE /* README.md */ = {isa = PBXFileReference; lastKnownFileType = net.daringfireball.markdown; path = README.md; sourceTree = "<group>"; };
 /* End PBXFileReference section */
 
 /* Begin PBXFileSystemSynchronizedBuildFileExceptionSet section */
@@ -160,6 +162,7 @@
 		98D10E332BFB7C82009918EF /* walking */ = {
 			isa = PBXGroup;
 			children = (
+				98E02CD42DE76EAB0003A5EE /* README.md */,
 				98B8A0C62DD5578500BDAD4A /* walking.entitlements */,
 				98AC27D82BFCE097000AD975 /* Info.plist */,
 				98D10E342BFB7C82009918EF /* walkingApp.swift */,
@@ -340,6 +343,7 @@
 			isa = PBXResourcesBuildPhase;
 			buildActionMask = 2147483647;
 			files = (
+				98E02CD52DE76EB60003A5EE /* README.md in Resources */,
 				98D10E3C2BFB7C84009918EF /* Preview Assets.xcassets in Resources */,
 				98D10E392BFB7C84009918EF /* Assets.xcassets in Resources */,
 			);
