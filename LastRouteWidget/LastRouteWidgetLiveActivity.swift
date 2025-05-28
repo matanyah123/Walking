@@ -21,11 +21,11 @@ struct LastRouteWidgetLiveActivity: Widget {
             .contentTransition(.numericText(value: context.state.distance))
             .foregroundStyle(Color.black.opacity(0.6))
           if goal > 0 {
-          ProgressView("You completed \(percentage, specifier: "%.1f")% of your goal", value: progress)
-            .contentTransition(.numericText(value: percentage))
-            .font(.subheadline)
-            .foregroundStyle(Color.black
-              .opacity(0.6))
+            ProgressView("You completed \(percentage, specifier: "%.1f")% of your goal", value: progress)
+              .contentTransition(.numericText(value: percentage))
+              .font(.subheadline)
+              .foregroundStyle(Color.black
+                .opacity(0.6))
           }
         }
 
@@ -36,11 +36,11 @@ struct LastRouteWidgetLiveActivity: Widget {
           .bold()
           .foregroundStyle(Color.black.opacity(0.6))
         /*
-        Button{
-          //.toggleTracking()
-        }label:{
-          Image(systemName: "pause.fill")
-        }
+         Button{
+         //.toggleTracking()
+         }label:{
+         Image(systemName: "pause.fill")
+         }
          */
       }
       .padding()
@@ -49,28 +49,51 @@ struct LastRouteWidgetLiveActivity: Widget {
     } dynamicIsland: { context in
       DynamicIsland {
         DynamicIslandExpandedRegion(.leading) {
-          Image(systemName: "figure.walk")
+          HStack{
+            Image(systemName: "figure.walk")
+            Text("\(context.state.distance, specifier: "%.1f") m")
+          }
         }
         DynamicIslandExpandedRegion(.trailing) {
-          VStack(alignment: .trailing) {
-            Text("\(context.state.distance, specifier: "%.1f") m")
-            Text("\(context.state.steps) steps")
+          HStack{
+            Text("\(context.state.steps)")
+            Image(systemName: "shoeprints.fill")
           }
-          .font(.caption2)
         }
         DynamicIslandExpandedRegion(.bottom) {
-          VStack(alignment: .leading) {
-            Text("Distance: \(context.state.distance, specifier: "%.1f") m")
-            Text("Steps: \(context.state.steps)")
+          VStack(alignment: .leading, spacing: 10.0) {
+            Spacer().frame(height: 10)
+            Text("You walked \(context.state.distance, specifier: "%.1f") meters and \(context.state.steps) steps")
+              .font(.subheadline)
+              .bold()
+              .contentTransition(.numericText(value: context.state.distance))
+            let goal = context.attributes.currentGoalOverride
+            let progress = min(context.state.distance / goal, 1.0)
+            let percentage = progress * 100
+            if goal > 0 {
+              ProgressView("You completed \(percentage, specifier: "%.1f")% of your goal", value: progress)
+                .contentTransition(.numericText(value: percentage))
+                .font(.title3)
+                .foregroundStyle(Color.white)
+                .tint(Color.white)
+            }
           }
           .font(.footnote)
         }
       } compactLeading: {
-        Image(systemName: "figure.walk")
+        let goal = context.attributes.currentGoalOverride
+        let progress = min(context.state.distance / goal, 1.0)
+        let percentage = progress * 100
+        ProgressView("\(percentage, specifier: "%.0f")",value: progress)
+          .progressViewStyle(.circular)
+          .bold()
+          .frame(width: 25, height: 25)
+          .padding(5)
       } compactTrailing: {
-        Text("\(Int(context.state.distance))m")
+        Image(systemName: "figure.walk")
+          .padding(.trailing)
       } minimal: {
-        Text("shoeprints.fill")
+        Image(systemName: "shoeprints.fill")
       }
       .widgetURL(URL(string: "walktracker://live"))
       .keylineTint(Color.red)
@@ -92,7 +115,36 @@ extension LastRouteWidgetAttributes.ContentState {
 }
 
 #Preview("Live Activity", as: .content, using: LastRouteWidgetAttributes.preview) {
-    LastRouteWidgetLiveActivity()
+  LastRouteWidgetLiveActivity()
 } contentStates: {
   LastRouteWidgetAttributes.ContentState.example
+}
+
+
+struct LastRouteWidgetLiveActivity_Previews: PreviewProvider {
+    static let attributes = LastRouteWidgetAttributes.preview
+    static let contentState = LastRouteWidgetAttributes.ContentState.example
+    static let goalCompletedState = LastRouteWidgetAttributes.ContentState.example
+
+    static var previews: some View {
+        Group {
+            // Dynamic Island States
+            attributes
+                .previewContext(contentState, viewKind: .dynamicIsland(.compact))
+                .previewDisplayName("DI Compact - In Progress")
+
+            attributes
+                .previewContext(contentState, viewKind: .dynamicIsland(.expanded))
+                .previewDisplayName("DI Expanded - In Progress")
+
+            attributes
+                .previewContext(contentState, viewKind: .dynamicIsland(.minimal))
+                .previewDisplayName("DI Minimal - In Progress")
+
+            // Goal completed state
+            attributes
+                .previewContext(goalCompletedState, viewKind: .dynamicIsland(.expanded))
+                .previewDisplayName("DI Expanded - Goal Completed")
+        }
+    }
 }

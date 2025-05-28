@@ -76,7 +76,7 @@ struct ContentView: View {
       )
       .offset(y: viewModel.offset - 8.5)
     }
-    .ignoresSafeArea()
+    .ignoresSafeArea(.container)
 
     .onReceive(NotificationCenter.default.publisher(for: UIResponder.keyboardWillShowNotification)) { notification in
       if !viewModel.isKeyboardVisible {
@@ -84,7 +84,7 @@ struct ContentView: View {
 
         if let keyboardFrame = notification.userInfo?[UIResponder.keyboardFrameEndUserInfoKey] as? CGRect {
           withAnimation(.easeInOut(duration: 0.25)) {
-            viewModel.offset = -keyboardFrame.height/20
+            viewModel.offset = -keyboardFrame.height/20 + 8.5
           }
         }
         DispatchQueue.main.asyncAfter(deadline: .now() + 0.25) {
@@ -122,6 +122,7 @@ struct ContentView: View {
       }
     }
     EdgeBlur(direction: .bottom, opacity: height/100).frame(height: height).transition(.opacity)
+      .padding(.horizontal, -5)
   }
 
   @ViewBuilder

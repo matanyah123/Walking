@@ -65,23 +65,24 @@ struct LastRouteWidgetEntryView: View {
         CLLocation(latitude: $0.latitude, longitude: $0.longitude)
     }
     ZStack {
-      LinearGradient(
-        gradient: Gradient(colors: [Color.green.opacity(0.8), Color.orange.opacity(0.6)]),
-        startPoint: .topLeading,
-        endPoint: .bottomTrailing
-      ).colorInvert()
-
-      if widgetFamily != .systemSmall {
-        Canvas { context, size in
-          let path = createPath(from: route, in: size)
-          context.stroke(
-            path,
-            with: .color(.white.opacity(0.85)),
-            style: StrokeStyle(lineWidth: 2, lineCap: .round, lineJoin: .round)
-          )
+      if (widgetFamily == .systemSmall || widgetFamily == .systemMedium || widgetFamily == .systemLarge || widgetFamily == .systemExtraLarge) {
+        LinearGradient(
+          gradient: Gradient(colors: [Color.green.opacity(0.8), Color.orange.opacity(0.6)]),
+          startPoint: .topLeading,
+          endPoint: .bottomTrailing
+        ).colorInvert()
+        if (widgetFamily != .systemSmall) {
+          Canvas { context, size in
+            let path = createPath(from: route, in: size)
+            context.stroke(
+              path,
+              with: .color(.white.opacity(0.85)),
+              style: StrokeStyle(lineWidth: 2, lineCap: .round, lineJoin: .round)
+            )
+          }
+          .aspectRatio(1, contentMode: .fit)
+          .padding(16)
         }
-        .aspectRatio(1, contentMode: .fit)
-        .padding(16)
       }
 
       switch widgetFamily {
@@ -102,6 +103,19 @@ struct LastRouteWidgetEntryView: View {
         }
         .padding(16)
 
+      case .accessoryInline:
+        HStack{
+          Image(systemName: "shoeprints.fill").padding(5)
+          smallWalkInfo
+        }
+      case .accessoryCircular:
+        VStack{
+          circularWalkInfo
+        }
+      case .accessoryRectangular:
+        HStack{
+          rectangularWalkInfo
+        }.padding()
       default:
         mainWalkInfo
           .padding(16)
@@ -110,6 +124,88 @@ struct LastRouteWidgetEntryView: View {
     .padding(-17)
     .widgetURL(URL(string: "walktracker://open"))
     .containerBackground(.clear, for: .widget)
+  }
+
+  private var smallWalkInfo: some View {
+    return ZStack() {
+      if let walk = entry.walk {
+        Text(" \(walk.distance >= 1000 ? String(format: "%.1f KM", walk.distance / 1000) : String(format: "%.0f M", walk.distance))")
+      } else {
+        Text("No recent walks")
+          .font(.headline)
+          .foregroundColor(.white)
+          .fontWeight(.medium)
+      }
+    }
+  }
+
+  private var circularWalkInfo: some View {
+    return VStack(alignment: .center) {
+      if let walk = entry.walk {
+        Text("Last walk")
+          .font(.footnote)
+          Text(" \(walk.distance >= 1000 ? String(format: "%.1f KM", walk.distance / 1000) : String(format: "%.0f M", walk.distance))")
+          .font(.subheadline)
+            .fontWeight(.bold)
+        if let date = Calendar.current.date(byAdding: .day, value: 0, to: walk.date) {
+          Text(date, style: .date)
+            .font(.system(size: 10))
+        }
+      } else {
+        Text("No recent walks")
+          .font(.headline)
+          .foregroundColor(.white)
+          .fontWeight(.medium)
+      }
+    }
+  }
+
+
+  private var rectangularWalkInfo: some View {
+    let route: [CLLocation] = (entry.walk?.route ?? []).map {
+      CLLocation(latitude: $0.latitude, longitude: $0.longitude)
+    }
+    return VStack(alignment: .leading) {
+      if let walk = entry.walk {
+        HStack{
+          Text("Last Walk:")
+            .font(.footnote)
+            .fontWeight(.bold)
+          if let date = Calendar.current.date(byAdding: .day, value: 0, to: walk.date) {
+            Text(date, style: .date)
+              .font(.system(size: 10))
+              .foregroundColor(.white.opacity(0.8))
+          }
+        }
+
+        HStack{
+          Canvas { context, size in
+            let path = createPath(from: route, in: size)
+            context.stroke(
+              path,
+              with: .color(.white.opacity(0.85)),
+              style: StrokeStyle(lineWidth: 2, lineCap: .round, lineJoin: .round)
+            )
+          }
+          .frame(width: 10, height: 10)
+          Text(" \(walk.distance >= 1000 ? String(format: "%.1f KM", walk.distance / 1000) : String(format: "%.0f M", walk.distance))")
+            .font(.footnote)
+            .foregroundColor(.white)
+            .fontWeight(.bold)
+
+          Text("\(Image(systemName: "clock")) \(formatDuration(timeInterval: walk.duration))")
+            .font(.footnote)
+            .fontWeight(.bold)
+            .foregroundColor(.white.opacity(0.9))
+        }
+        .frame(height: 10)
+      } else {
+        Text("No recent walks")
+          .font(.footnote)
+          .foregroundColor(.white)
+          .fontWeight(.medium)
+      }
+    }
   }
 
   private var mainWalkInfo: some View {
@@ -232,6 +328,7 @@ func createPath(from locations: [CLLocation], in size: CGSize) -> Path {
 
 struct LastRouteWidget_Previews: PreviewProvider {
     static var previews: some View {
+      /*
         LastRouteWidgetEntryView(entry: WalkEntry(
             date: Date(),
             walk: WalkData(
@@ -251,5 +348,25 @@ struct LastRouteWidget_Previews: PreviewProvider {
         ))
         .previewContext(WidgetPreviewContext(family: .systemSmall))
         .preferredColorScheme(.dark)
+       */
+      LastRouteWidgetEntryView(entry: WalkEntry(
+          date: Date(),
+          walk: WalkData(
+              date: Date(),
+              startTime: Date().addingTimeInterval(-33676),
+              endTime: Date(),
+              steps: 16789,
+              distance: 10560.4,
+              maxSpeed: 2.5,
+              elevationGain: 12.3,
+              elevationLoss: 10.1,
+              route: [
+                  CLLocationCoordinate2D(latitude: 31.7683, longitude: 35.2137),
+                  CLLocationCoordinate2D(latitude: 31.7690, longitude: 35.2145)
+              ]
+          ), goalTarget: 5000
+      ))
+      .previewContext(WidgetPreviewContext(family: .accessoryRectangular))
+      .preferredColorScheme(.dark)
     }
 }

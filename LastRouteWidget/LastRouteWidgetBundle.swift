@@ -25,6 +25,6 @@ struct LastRouteWidget: Widget {
         }
         .configurationDisplayName("Last Walk")
         .description("Shows a snapshot of your most recent walk.")
-        .supportedFamilies([.systemSmall, .systemMedium, .systemLarge])
+        .supportedFamilies([.systemSmall, .systemMedium, .systemLarge, .accessoryInline, .accessoryCircular, .accessoryRectangular])
     }
 }
