@@ -52,13 +52,15 @@ struct ContentView: View {
     return locationManager.distance / goal
   }
 
+  @State private var height: CGFloat = 80.0
+
 
   var body: some View {
     ZStack(alignment: .bottom) {
+      // Main content
       Group {
         mainTabView()
       }
-
       CustomBottomBar(
         started: $viewModel.started,
         tracking: $viewModel.tracking,
@@ -68,12 +70,13 @@ struct ContentView: View {
         selectedTab: $viewModel.selectedTab,
         locationManager: locationManager,
         motionManager: motionManager,
-        liveActivityManager: liveActivityManager, trackingMode: $viewModel.trackingMode, deepLink: $deepLink
+        liveActivityManager: liveActivityManager,
+        trackingMode: $viewModel.trackingMode,
+        deepLink: $deepLink
       )
-      //.colorScheme(viewModel.mapStyleDarkMode ? .dark : .light)
-      .padding(.bottom, 8)
-      .offset(y: viewModel.offset)
+      .offset(y: viewModel.offset - 8.5)
     }
+    .ignoresSafeArea()
 
     .onReceive(NotificationCenter.default.publisher(for: UIResponder.keyboardWillShowNotification)) { notification in
       if !viewModel.isKeyboardVisible {
@@ -108,14 +111,17 @@ struct ContentView: View {
 
   @ViewBuilder
   private func mainTabView() -> some View {
-    switch viewModel.selectedTab {
-    case .home:
-      homeTabView()
-    case .walk:
-      WalkHistoryView()
-    case .settings:
-      SettingsView(doYouNeedAGoal: $viewModel.doYouNeedAGoal)
+    ZStack{
+      switch viewModel.selectedTab {
+      case .home:
+        homeTabView()
+      case .walk:
+        WalkHistoryView()
+      case .settings:
+        SettingsView(doYouNeedAGoal: $viewModel.doYouNeedAGoal)
+      }
     }
+    EdgeBlur(direction: .bottom, opacity: height/100).frame(height: height).transition(.opacity)
   }
 
   @ViewBuilder
@@ -143,6 +149,7 @@ struct ContentView: View {
             locationManager: locationManager,
             motionManager: motionManager
           )
+            .padding(.top, 30)
           .onTapGesture {
             DispatchQueue.main.asyncAfter(deadline: .now() + 0.09) {
               UIImpactFeedbackGenerator(style: .soft).impactOccurred()

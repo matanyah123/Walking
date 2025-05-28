@@ -73,7 +73,7 @@ struct CustomBottomBar: View {
     private var backButton: some View {
         Image(systemName: "chevron.left")
             .font(.system(size: 20, weight: .bold))
-            .foregroundColor(.white.opacity(0.4))
+            .foregroundColor(.white.opacity(0.75))
     }
 
   private var tabButtons: some View {
@@ -147,7 +147,7 @@ struct CustomBottomBar: View {
     private var runIcon: some View {
         Image(systemName: "figure.run")
             .font(.system(size: 20, weight: .bold))
-            .foregroundColor(started ? Color.accentFromSettings.opacity(0.4) : .white.opacity(0.4))
+            .foregroundColor(started ? Color.accentFromSettings.opacity(0.75) : .white.opacity(0.75))
     }
 
     private var goalInputView: some View {

@@ -148,15 +148,25 @@ struct SettingsView: View {
         }
 
         // Additional Settings Section
-        Section(header: Text("Additional Settings")) {
+        Section(
+            header: Text("Additional Settings"),
+            footer: Text(" ").frame(height: 75)
+        ) {
           Toggle("Enable Notifications", isOn: $notificationsEnabled)
 
           NavigationLink(destination: AboutView()) {
             Label("About This App", systemImage: "info.circle")
+              .foregroundStyle(Color.accentFromSettings)
           }
 
           NavigationLink(destination: HelpView()) {
             Label("Help & Support", systemImage: "questionmark.circle")
+              .foregroundStyle(Color.accentFromSettings)
+          }
+
+          NavigationLink(destination: ThanksView()) {
+            Label("Thank You", systemImage: "heart.circle")
+              .foregroundStyle(Color.accentFromSettings)
           }
         }
       }
@@ -165,6 +175,7 @@ struct SettingsView: View {
     }
   }
 }
+
 
 
 // MARK: - Preset Colors View
@@ -358,7 +369,6 @@ struct AboutView: View {
 
 
 
-
 // MARK: - Help View
 struct HelpView: View {
   var body: some View {
@@ -403,8 +413,56 @@ struct HelpView: View {
 }
 
 
+struct Supporter: Identifiable {
+    var id: String { name }
+    var name: String
+    var link: URL
+}
 
+// MARK: - Help View
+struct ThanksView: View {
+  @State var supporters: [Supporter] = [
+    Supporter(name: "Alice", link: URL(string: "https://github.com/alice")!),
+    Supporter(name: "Bob", link: URL(string: "https://github.com/bob")!)
+  ]
 
+  var body: some View {
+    List {
+      Text("Thanks to everyone who supported me since day one.")
+        .font(.headline)
+        .multilineTextAlignment(.center)
+        .padding(.vertical)
+      Section(header: Text("Supporters")) {
+        ForEach(supporters) { supporter in
+          Button {
+            UIApplication.shared.open(supporter.link)
+          } label: {
+            Label(supporter.name, systemImage: "person.crop.circle")
+          }
+        }
+      }
+
+      Section(header: Text("Want to support?")) {
+        Button {
+          if let websiteURL = URL(string: "https://linktr.ee/Matanyah") {
+            UIApplication.shared.open(websiteURL)
+          }
+        } label: {
+          Label("Buy me a coffee", systemImage: "cup.and.saucer.fill")
+        }
+      }
+    }
+    .navigationTitle("Thank You!")
+  }
+}
+
+#Preview {
+  @State var deepLink: String?
+  ContentView(deepLink: $deepLink)
+    .preferredColorScheme(.dark)
+}
+
+/*
 // MARK: - Preview
 #Preview("Settings View") {
   @Previewable @State var doYouNeedAGoal: Bool = false
@@ -414,3 +472,8 @@ struct HelpView: View {
 #Preview("Preset Colors") {
   PresetColorsView(selectColor: { _ in })
 }
+
+#Preview{
+  ThanksView()
+}
+*/

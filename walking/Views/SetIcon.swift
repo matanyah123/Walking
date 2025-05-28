@@ -16,7 +16,8 @@ struct SetIcon: View {
     ZStack {
       BlurView(style: .systemUltraThinMaterialLight)
         .cornerRadius(25)
-        .innerShadow(radius: 25)        .padding(.all, 5.0)
+        .innerShadow(radius: 25)
+        .padding(.all, 5.0)
         .opacity(isSelected ? opacityValue : opacityValue - 0.5)
         .overlay{
           Image(systemName: icon)
