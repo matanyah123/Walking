@@ -72,7 +72,7 @@ Walking/
 
 - [ ] HealthKit integration
 - [ ] Weekly goals & achievements
-- [ ] Share walks with friends
+- [ ] Share walks with friends (Partly integrated)
 - [ ] iCloud sync
 - [ ] App Store release (maybe? 👀)
 

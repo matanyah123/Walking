@@ -139,6 +139,7 @@
 			isa = PBXGroup;
 			children = (
 				98B8A0C72DD5579400BDAD4A /* LastRouteWidgetExtension.entitlements */,
+				98E02CD42DE76EAB0003A5EE /* README.md */,
 				98D10E332BFB7C82009918EF /* walking */,
 				98D10E442BFB7C85009918EF /* walkingTests */,
 				98D10E4E2BFB7C85009918EF /* walkingUITests */,
@@ -162,7 +163,6 @@
 		98D10E332BFB7C82009918EF /* walking */ = {
 			isa = PBXGroup;
 			children = (
-				98E02CD42DE76EAB0003A5EE /* README.md */,
 				98B8A0C62DD5578500BDAD4A /* walking.entitlements */,
 				98AC27D82BFCE097000AD975 /* Info.plist */,
 				98D10E342BFB7C82009918EF /* walkingApp.swift */,
