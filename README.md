@@ -30,19 +30,19 @@ It’s lightweight, intuitive, and designed with love to help you stay active an
 
 ## 📸 Screenshots
 
-![Screenshot 1](Screenshots/Screenshot_1.png)
+<img src="Screenshots/Screenshot_1.png" width="400" />
 
 ---
 
-![Screenshot 2](Screenshots/Screenshot_2.png)
+<img src="Screenshots/Screenshot_2.png" width="400" />
 
 ---
 
-![Screenshot 3](Screenshots/Screenshot_3.png)
+<img src="Screenshots/Screenshot_3.png" width="400" />
 
 ---
 
-![Screenshot 4](Screenshots/Screenshot_4.png)
+<img src="Screenshots/Screenshot_4.png" width="400" />
 
 ---
 
