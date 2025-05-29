@@ -1,3 +1,9 @@
+//
+//  WalkData.swift
+//  walking
+//
+//  Created by ‏מתניה ‏אליהו on 20/05/2024.
+//
 import Foundation
 import CoreLocation
 

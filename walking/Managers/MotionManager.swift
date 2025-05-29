@@ -1,4 +1,9 @@
-//MotionManager
+//
+//  MotionManager.swift
+//  walking
+//
+//  Created by ‏מתניה ‏אליהו on 20/05/2024.
+//
 import CoreMotion
 
 class MotionManager: ObservableObject {

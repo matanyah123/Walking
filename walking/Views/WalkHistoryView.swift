@@ -1,3 +1,9 @@
+//
+//  WalkHistoryView.swift
+//  walking
+//
+//  Created by ‏מתניה ‏אליהו on 15/05/2025.
+//
 import CoreLocation
 import WidgetKit
 import SwiftUI

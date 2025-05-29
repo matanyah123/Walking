@@ -1,3 +1,9 @@
+//
+//  ContentView.swift
+//  walking
+//
+//  Created by ‏מתניה ‏אליהו on 14/05/2025.
+//
 import SwiftUI
 import WidgetKit
 import CoreLocation

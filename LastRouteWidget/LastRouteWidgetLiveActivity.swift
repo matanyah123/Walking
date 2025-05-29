@@ -1,3 +1,9 @@
+//
+//  LastRouteWidgetLiveActivity.swift
+//  LastRouteWidget
+//
+//  Created by ‏מתניה ‏אליהו on 15/05/2025.
+//
 import ActivityKit
 import WidgetKit
 import SwiftUI

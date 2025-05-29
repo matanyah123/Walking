@@ -1,3 +1,9 @@
+//
+//  MapView.swift
+//  walking
+//
+//  Created by ‏מתניה ‏אליהו on 28/05/2025.
+//
 import SwiftUI
 import MapKit
 

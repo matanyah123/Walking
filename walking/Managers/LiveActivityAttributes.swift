@@ -1,3 +1,10 @@
+//
+//  LiveActivityAttributes.swift
+//  walking
+//
+//  Created by ‏מתניה ‏אליהו on 20/05/2024.
+//
+
 @preconcurrency import ActivityKit
 import SwiftUI
 
