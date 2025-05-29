@@ -32,9 +32,15 @@ It’s lightweight, intuitive, and designed with love to help you stay active an
 
 ![Screenshot](Simulator Screenshot - iPhone 16 - 2025-05-29 at 12.55.22)
 
+---
+
 ![Screenshot](Simulator Screenshot - iPhone 16 - 2025-05-29 at 12.55.31)
 
+---
+
 ![Screenshot](Simulator Screenshot - iPhone 16 - 2025-05-29 at 12.55.41)
+
+---
 
 ![Screenshot](Simulator Screenshot - iPhone 16 - 2025-05-29 at 12.56.57)
 
