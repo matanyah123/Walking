@@ -21,6 +21,7 @@ It’s lightweight, intuitive, and designed with love to help you stay active an
   - Lavender Blue `#7C80D5`
   - Turquoise Mint `#63D7C5`
   - Vibrant Orange `#FF8D3A`
+  - Lime Green `#A3D16E`
 
 - 📱 **Home & Lock Screen Widgets**  
   Includes a live activity widget to monitor your session from anywhere.
@@ -29,8 +30,8 @@ It’s lightweight, intuitive, and designed with love to help you stay active an
 
 ## 📸 Screenshots
 
-*(Coming soon!)*  
-Feel free to contribute by uploading screenshots of the app in action!
+
+![Screenshot](Screenshots/screenshot.png)
 
 ---
 
