@@ -30,19 +30,19 @@ It’s lightweight, intuitive, and designed with love to help you stay active an
 
 ## 📸 Screenshots
 
-![Screenshot](Screenshots/Simulator Screenshot - iPhone 16 - 2025-05-29 at 12.55.22)
+![Screenshot 1](Screenshots/Screenshot_1.png)
 
 ---
 
-![Screenshot](Screenshots/Simulator Screenshot - iPhone 16 - 2025-05-29 at 12.55.31)
+![Screenshot 2](Screenshots/Screenshot_2.png)
 
 ---
 
-![Screenshot](Screenshots/Simulator Screenshot - iPhone 16 - 2025-05-29 at 12.55.41)
+![Screenshot 3](Screenshots/Screenshot_3.png)
 
 ---
 
-![Screenshot](Screenshots/Simulator Screenshot - iPhone 16 - 2025-05-29 at 12.56.57)
+![Screenshot 4](Screenshots/Screenshot_4.png)
 
 ---
 

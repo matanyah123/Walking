@@ -80,20 +80,20 @@
 		983917002DE8673E004909E9 /* PBXFileSystemSynchronizedBuildFileExceptionSet */ = {
 			isa = PBXFileSystemSynchronizedBuildFileExceptionSet;
 			membershipExceptions = (
-				"Simulator Screenshot - iPhone 16 - 2025-05-29 at 12.55.22.png",
-				"Simulator Screenshot - iPhone 16 - 2025-05-29 at 12.55.31.png",
-				"Simulator Screenshot - iPhone 16 - 2025-05-29 at 12.55.41.png",
-				"Simulator Screenshot - iPhone 16 - 2025-05-29 at 12.56.57.png",
+				Screenshot_1.png,
+				Screenshot_2.png,
+				Screenshot_3.png,
+				Screenshot_4.png,
 			);
 			target = 98D10E302BFB7C82009918EF /* walking */;
 		};
 		983917012DE8673E004909E9 /* PBXFileSystemSynchronizedBuildFileExceptionSet */ = {
 			isa = PBXFileSystemSynchronizedBuildFileExceptionSet;
 			membershipExceptions = (
-				"Simulator Screenshot - iPhone 16 - 2025-05-29 at 12.55.22.png",
-				"Simulator Screenshot - iPhone 16 - 2025-05-29 at 12.55.31.png",
-				"Simulator Screenshot - iPhone 16 - 2025-05-29 at 12.55.41.png",
-				"Simulator Screenshot - iPhone 16 - 2025-05-29 at 12.56.57.png",
+				Screenshot_1.png,
+				Screenshot_2.png,
+				Screenshot_3.png,
+				Screenshot_4.png,
 			);
 			target = 98D10E402BFB7C85009918EF /* walkingTests */;
 		};
