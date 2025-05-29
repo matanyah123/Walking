@@ -77,17 +77,23 @@
 /* End PBXFileReference section */
 
 /* Begin PBXFileSystemSynchronizedBuildFileExceptionSet section */
-		983916F62DE8659C004909E9 /* PBXFileSystemSynchronizedBuildFileExceptionSet */ = {
+		983917002DE8673E004909E9 /* PBXFileSystemSynchronizedBuildFileExceptionSet */ = {
 			isa = PBXFileSystemSynchronizedBuildFileExceptionSet;
 			membershipExceptions = (
-				screenshot.png,
+				"Simulator Screenshot - iPhone 16 - 2025-05-29 at 12.55.22.png",
+				"Simulator Screenshot - iPhone 16 - 2025-05-29 at 12.55.31.png",
+				"Simulator Screenshot - iPhone 16 - 2025-05-29 at 12.55.41.png",
+				"Simulator Screenshot - iPhone 16 - 2025-05-29 at 12.56.57.png",
 			);
 			target = 98D10E302BFB7C82009918EF /* walking */;
 		};
-		983916F72DE8659C004909E9 /* PBXFileSystemSynchronizedBuildFileExceptionSet */ = {
+		983917012DE8673E004909E9 /* PBXFileSystemSynchronizedBuildFileExceptionSet */ = {
 			isa = PBXFileSystemSynchronizedBuildFileExceptionSet;
 			membershipExceptions = (
-				screenshot.png,
+				"Simulator Screenshot - iPhone 16 - 2025-05-29 at 12.55.22.png",
+				"Simulator Screenshot - iPhone 16 - 2025-05-29 at 12.55.31.png",
+				"Simulator Screenshot - iPhone 16 - 2025-05-29 at 12.55.41.png",
+				"Simulator Screenshot - iPhone 16 - 2025-05-29 at 12.56.57.png",
 			);
 			target = 98D10E402BFB7C85009918EF /* walkingTests */;
 		};
@@ -101,7 +107,7 @@
 /* End PBXFileSystemSynchronizedBuildFileExceptionSet section */
 
 /* Begin PBXFileSystemSynchronizedRootGroup section */
-		983916F32DE86523004909E9 /* Screenshots */ = {isa = PBXFileSystemSynchronizedRootGroup; exceptions = (983916F62DE8659C004909E9 /* PBXFileSystemSynchronizedBuildFileExceptionSet */, 983916F72DE8659C004909E9 /* PBXFileSystemSynchronizedBuildFileExceptionSet */, ); explicitFileTypes = {}; explicitFolders = (); path = Screenshots; sourceTree = "<group>"; };
+		983916F32DE86523004909E9 /* Screenshots */ = {isa = PBXFileSystemSynchronizedRootGroup; exceptions = (983917002DE8673E004909E9 /* PBXFileSystemSynchronizedBuildFileExceptionSet */, 983917012DE8673E004909E9 /* PBXFileSystemSynchronizedBuildFileExceptionSet */, ); explicitFileTypes = {}; explicitFolders = (); path = Screenshots; sourceTree = "<group>"; };
 		9855CB472DD54F68004BAD9B /* Managers */ = {isa = PBXFileSystemSynchronizedRootGroup; explicitFileTypes = {}; explicitFolders = (); path = Managers; sourceTree = "<group>"; };
 		9855CB482DD54F9C004BAD9B /* Views */ = {isa = PBXFileSystemSynchronizedRootGroup; explicitFileTypes = {}; explicitFolders = (); path = Views; sourceTree = "<group>"; };
 		98B8A0B32DD5565D00BDAD4A /* LastRouteWidget */ = {isa = PBXFileSystemSynchronizedRootGroup; exceptions = (98B8A0C42DD5565F00BDAD4A /* PBXFileSystemSynchronizedBuildFileExceptionSet */, ); explicitFileTypes = {}; explicitFolders = (); path = LastRouteWidget; sourceTree = "<group>"; };
