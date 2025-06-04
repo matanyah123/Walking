@@ -16,8 +16,10 @@ enum Tab {
 }
 
 class ContentViewModel: ObservableObject {
+  @Published var isKeyboardVisible = false
   @Published var selectedTab: Tab = .home
   @Published var isStatsBarOpen = false
+  @Published var trackingMode: Int = 0
   @Published var offset: CGFloat = 0
   @Published var tracking = false
   @Published var started = false
@@ -31,22 +33,22 @@ class ContentViewModel: ObservableObject {
       WidgetCenter.shared.reloadAllTimelines()
     }
   }
+  @Published var isPaymentWallShown: Bool = false
 
   init() {
     // Load the session override if it exists, otherwise fall back to default
     let override = UserDefaults.shared.object(forKey: SharedKeys.currentGoalOverride) as? Double
     self.goal = override
   }
-  @Published var isKeyboardVisible = false
-  @Published var trackingMode: Int = 0
 
   @AppStorage("doYouNeedAGoal") var doYouNeedAGoal: Bool = false
-  @AppStorage("mapStyleDarkMode", store: UserDefaults(suiteName: "group.com.matanyah.WalkTracker")) var mapStyleDarkMode: Bool = true
-  @AppStorage(SharedKeys.currentGoalOverride, store: .shared)
-  var goalTarget: Int = 5000
+  @AppStorage("darkMode", store: UserDefaults(suiteName: "group.com.matanyah.WalkTracker")) var darkMode: Bool = true
+
+  @AppStorage(SharedKeys.currentGoalOverride, store: .shared)var goalTarget: Int = 5000
 }
 
 struct ContentView: View {
+  //@Environment(\.modelContext) private var modelContext
   @Binding var deepLink: String?
   @StateObject private var viewModel = ContentViewModel()
   @StateObject private var locationManager = LocationManager()
@@ -63,10 +65,10 @@ struct ContentView: View {
 
   var body: some View {
     ZStack(alignment: .bottom) {
-      // Main content
       Group {
         mainTabView()
       }
+      EdgeBlur(direction: .bottom, opacity: height/100).frame(height: height).transition(.opacity)
       CustomBottomBar(
         started: $viewModel.started,
         tracking: $viewModel.tracking,
@@ -80,10 +82,9 @@ struct ContentView: View {
         trackingMode: $viewModel.trackingMode,
         deepLink: $deepLink
       )
-      .offset(y: viewModel.offset - 8.5)
+      .padding(.bottom)
     }
     .ignoresSafeArea(.container)
-
     .onReceive(NotificationCenter.default.publisher(for: UIResponder.keyboardWillShowNotification)) { notification in
       if !viewModel.isKeyboardVisible {
         viewModel.isKeyboardVisible = true
@@ -98,7 +99,6 @@ struct ContentView: View {
         }
       }
     }
-
     .onReceive(NotificationCenter.default.publisher(for: UIResponder.keyboardWillHideNotification)) { _ in
       if viewModel.isKeyboardVisible {
         viewModel.isKeyboardVisible = false
@@ -113,6 +113,12 @@ struct ContentView: View {
         }
       }
     }
+    .onAppear {
+      // MARK: - viewModel.isPaymentWallShown = true
+    }
+    .sheet(isPresented: $viewModel.isPaymentWallShown){
+      PaymentWall()
+    }
   }
 
   @ViewBuilder
@@ -122,13 +128,13 @@ struct ContentView: View {
       case .home:
         homeTabView()
       case .walk:
-        WalkHistoryView()
+        WalkActivityView()
+          .colorScheme(viewModel.darkMode ? .dark : .light)
       case .settings:
         SettingsView(doYouNeedAGoal: $viewModel.doYouNeedAGoal)
+          .colorScheme(viewModel.darkMode ? .dark : .light)
       }
     }
-    EdgeBlur(direction: .bottom, opacity: height/100).frame(height: height).transition(.opacity)
-      .padding(.horizontal, -5)
   }
 
   @ViewBuilder
@@ -137,7 +143,7 @@ struct ContentView: View {
       MapView(route: locationManager.route,
               currentLocation: locationManager.currentLocation,
               showUserLocation: true, trackingMode: $viewModel.trackingMode)
-      .colorScheme(viewModel.mapStyleDarkMode ? .dark : .light)
+      .colorScheme(viewModel.darkMode ? .dark : .light)
       .ignoresSafeArea()
       .onTapGesture {
 
@@ -156,7 +162,7 @@ struct ContentView: View {
             locationManager: locationManager,
             motionManager: motionManager
           )
-            .padding(.top, 30)
+          .padding(.top, 40)
           .onTapGesture {
             DispatchQueue.main.asyncAfter(deadline: .now() + 0.09) {
               UIImpactFeedbackGenerator(style: .soft).impactOccurred()

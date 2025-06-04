@@ -25,6 +25,7 @@ struct EdgeBlur: View {
     )
     .blur(radius: 8)
     .frame(height: 200)
+    .padding(.horizontal, -10)
     .allowsHitTesting(false)
   }
 }

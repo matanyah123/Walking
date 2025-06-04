@@ -17,6 +17,7 @@ struct LastRouteWidgetAttributes: ActivityAttributes {
   var name: String
   var accentColor: CodableColor
   var currentGoalOverride: Double
+  var unit: Bool
 }
 
 
@@ -29,8 +30,9 @@ class LiveActivityManager: ObservableObject {
     let accent = (try? JSONDecoder().decode(CodableColor.self, from: colorData ?? Data())) ?? CodableColor(red: 0, green: 0, blue: 1, opacity: 1)
 
     let goal = UserDefaults.shared.double(forKey: SharedKeys.currentGoalOverride)  // read goal here
+    let unit = UserDefaults.shared.object(forKey: SharedKeys.unit) as? Bool ?? true  // read unit here
 
-    let attributes = LastRouteWidgetAttributes(name: "Matanyah's Walk", accentColor: accent, currentGoalOverride: goal) // pass goal
+    let attributes = LastRouteWidgetAttributes(name: "Matanyah's Walk", accentColor: accent, currentGoalOverride: goal, unit: unit) // pass goal
 
     let initialState = LastRouteWidgetAttributes.ContentState(distance: 0, steps: 0)
 
@@ -71,6 +73,7 @@ class LiveActivityManager: ObservableObject {
 enum SharedKeys {
   static let goalTarget = "goalTarget"               // Default goal set in settings
   static let currentGoalOverride = "currentGoal"     // Temporary session goal
+  static let unit = "unit"                    // unit
 }
 
 extension UserDefaults {

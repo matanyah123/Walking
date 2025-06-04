@@ -60,11 +60,13 @@ struct Sharedview: View {
   @State private var isMiniMapOpen = false
   @Binding var isViewReady: Bool // Use a binding to track view readiness
   @State private var trackingMode: Int = 0
+  @AppStorage("darkMode", store: UserDefaults(suiteName: "group.com.matanyah.WalkTracker")) var darkMode: Bool = true
+  @AppStorage("unit", store: UserDefaults(suiteName: "group.com.matanyah.WalkTracker")) var unit: Bool = true
   var body: some View {
     ZStack {
       MapView(route: walk.route.map { CLLocation(latitude: $0.latitude, longitude: $0.longitude) }, showUserLocation: false, trackingMode: $trackingMode)
         .ignoresSafeArea(.all)
-      BlurView(style: .systemUltraThinMaterialDark).ignoresSafeArea(.all)
+      BlurView(style: darkMode ? .systemUltraThinMaterialDark : .systemThinMaterialLight).ignoresSafeArea(.all)
       VStack(alignment: .leading) {
         // Distance and Time
         HStack(alignment: .bottom) {
@@ -72,7 +74,7 @@ struct Sharedview: View {
             Text("Distance")
               .font(.subheadline)
               .foregroundColor(.secondary)
-            Text("\(walk.distance, specifier: "%.2f") km")
+            Text("\(walk.distance, specifier: "%.2f") \(unit ? "km" : "mi")")
               .font(.headline)
               .bold()
           }
@@ -114,7 +116,8 @@ struct Sharedview: View {
         .padding(.leading)
 
         MapView(route: walk.route.map { CLLocation(latitude: $0.latitude, longitude: $0.longitude) }, showUserLocation: false, trackingMode: $trackingMode)
-          .innerShadow(radius: 20)          .onAppear {
+          .innerShadow(radius: 20)
+          .onAppear {
             // Simulate loading; add custom logic if needed
             DispatchQueue.main.asyncAfter(deadline: .now() + 1) {
               isViewReady = true // Mark the view as ready after loading
@@ -138,6 +141,7 @@ struct Sharedview: View {
       }
       .padding()
     }
+    .colorScheme(darkMode ? .dark : .light)
   }
 
   private var formattedDate: String {

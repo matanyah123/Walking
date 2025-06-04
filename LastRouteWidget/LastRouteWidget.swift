@@ -59,46 +59,63 @@ struct WalkProvider: TimelineProvider {
 struct LastRouteWidgetEntryView: View {
   var entry: WalkEntry
   @Environment(\.widgetFamily) var widgetFamily
+  @AppStorage("unit", store: UserDefaults(suiteName: "group.com.matanyah.WalkTracker")) var unit: Bool = true
 
   var body: some View {
     let route = (entry.walk?.route ?? []).map {
         CLLocation(latitude: $0.latitude, longitude: $0.longitude)
     }
     ZStack {
+      let Route = Canvas { context, size in
+        let path = createPath(from: route, in: size)
+        context.stroke(
+          path,
+          with: .color((widgetFamily == .systemSmall ? .black.opacity(0.2) : .white.opacity(0.85))),
+          style: StrokeStyle(lineWidth: (widgetFamily == .systemSmall ? 8 : 5), lineCap: .round, lineJoin: .round)
+        )
+      }
+      .aspectRatio(1, contentMode: .fit)
+      .padding(10)
+
       if (widgetFamily == .systemSmall || widgetFamily == .systemMedium || widgetFamily == .systemLarge || widgetFamily == .systemExtraLarge) {
         LinearGradient(
           gradient: Gradient(colors: [Color.green.opacity(0.8), Color.orange.opacity(0.6)]),
           startPoint: .topLeading,
           endPoint: .bottomTrailing
         ).colorInvert()
-        if (widgetFamily != .systemSmall) {
-          Canvas { context, size in
-            let path = createPath(from: route, in: size)
-            context.stroke(
-              path,
-              with: .color(.white.opacity(0.85)),
-              style: StrokeStyle(lineWidth: 2, lineCap: .round, lineJoin: .round)
-            )
-          }
-          .aspectRatio(1, contentMode: .fit)
-          .padding(16)
-        }
       }
 
       switch widgetFamily {
       case .systemMedium:
         HStack {
-          mainWalkInfo
+          mainWalkInfo.shadow(radius: 10)
+          Spacer()
+          Route.shadow(radius: 10)
           Spacer()
         }
         .padding(16)
 
       case .systemLarge:
-        HStack(alignment: .top){
-          VStack(alignment: .leading) {
-            mainWalkInfo
+        VStack(alignment: .leading, spacing: 16) {
+
+          HStack(alignment: .top, spacing: 16) {
+            mainWalkInfo.shadow(radius: 10)
+            Spacer()
+            Route.shadow(radius: 10)
             Spacer()
           }
+          .frame(maxHeight: 135)
+
+          Spacer(minLength: 24)
+
+          HStack {
+            Spacer()
+            Text("Great Job!\nKeep walking")
+              .font(.largeTitle.bold())
+              .multilineTextAlignment(.center)
+            Spacer()
+          }
+
           Spacer()
         }
         .padding(16)
@@ -117,8 +134,11 @@ struct LastRouteWidgetEntryView: View {
           rectangularWalkInfo
         }.padding()
       default:
-        mainWalkInfo
-          .padding(16)
+        ZStack{
+          Route
+          mainWalkInfo.shadow(radius: 10)
+        }
+        .padding(16)
       }
     }
     .padding(-17)
@@ -188,7 +208,15 @@ struct LastRouteWidgetEntryView: View {
             )
           }
           .frame(width: 10, height: 10)
-          Text(" \(walk.distance >= 1000 ? String(format: "%.1f KM", walk.distance / 1000) : String(format: "%.0f M", walk.distance))")
+          let distanceValue = unit
+            ? (walk.distance >= 1000 ? walk.distance / 1000 : walk.distance)
+            : (walk.distance >= 1609.34 ? walk.distance / 1609.34 : walk.distance * 3.28084)
+
+          let unitLabel = unit
+            ? (walk.distance >= 1000 ? "km" : "m")
+            : (walk.distance >= 1609.34 ? "mi" : "ft")
+
+          Text(String(format: distanceValue >= 10 ? "%.1f %@" : "%.0f %@", distanceValue, unitLabel))
             .font(.footnote)
             .foregroundColor(.white)
             .fontWeight(.bold)
@@ -221,7 +249,7 @@ struct LastRouteWidgetEntryView: View {
           .padding(.bottom, 2)
 
         if widgetFamily != .systemSmall {
-          Text("\(Image(systemName: "point.bottomleft.forward.to.point.topright.scurvepath")) \(walk.distance >= 1000 ? String(format: "%.1f KM", walk.distance / 1000) : String(format: "%.0f M", walk.distance))")
+          Text("\(Image(systemName: "point.bottomleft.forward.to.point.topright.scurvepath")) \(unit ? (walk.distance >= 1000 ? String(format: "%.1f km", walk.distance / 1000) : String(format: "%.0f m", walk.distance)) : (walk.distance >= 1609.34 ? String(format: "%.1f mi", walk.distance / 1609.34) : String(format: "%.0f ft", walk.distance * 3.28084)))")
             .font(.body)
             .foregroundColor(.white)
             .fontWeight(.bold)
@@ -236,7 +264,7 @@ struct LastRouteWidgetEntryView: View {
               )
             }
             .frame(width: 10)
-            Text(" \(walk.distance >= 1000 ? String(format: "%.1f KM", walk.distance / 1000) : String(format: "%.0f M", walk.distance))")
+            Text(" \(unit ? (walk.distance >= 1000 ? String(format: "%.1f km", walk.distance / 1000) : String(format: "%.0f m", walk.distance)) : (walk.distance >= 1609.34 ? String(format: "%.1f mi", walk.distance / 1609.34) : String(format: "%.0f ft", walk.distance * 3.28084)))")
               .font(.body)
               .foregroundColor(.white)
               .fontWeight(.bold)
@@ -366,7 +394,7 @@ struct LastRouteWidget_Previews: PreviewProvider {
               ]
           ), goalTarget: 5000
       ))
-      .previewContext(WidgetPreviewContext(family: .accessoryRectangular))
+      .previewContext(WidgetPreviewContext(family: .systemMedium))
       .preferredColorScheme(.dark)
     }
 }

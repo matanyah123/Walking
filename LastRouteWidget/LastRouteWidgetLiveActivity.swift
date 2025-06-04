@@ -16,17 +16,25 @@ struct LastRouteWidgetLiveActivity: Widget {
   var body: some WidgetConfiguration {
     ActivityConfiguration(for: LastRouteWidgetAttributes.self) { context in
       let goal = context.attributes.currentGoalOverride
-      let progress = min(context.state.distance / goal, 1.0)
+      let unit = context.attributes.unit
+
+      // Convert distance based on unit setting
+      let displayDistance = unit ? context.state.distance : context.state.distance * 3.28084 // meters to feet
+      let displayGoal = unit ? goal : goal * 3.28084
+      let unitText = unit ? "meters" : "feet"
+      let unitAbbr = unit ? "m" : "ft"
+
+      let progress = displayGoal > 0 ? min(displayDistance / displayGoal, 1.0) : 0.0
       let percentage = progress * 100
 
       HStack {
         VStack(alignment: .leading) {
-          Text("You walked \(context.state.distance, specifier: "%.1f") meters and \(context.state.steps) steps")
+          Text("You walked \(displayDistance, specifier: "%.1f") \(unitText) and \(context.state.steps) steps")
             .font(.subheadline)
             .bold()
-            .contentTransition(.numericText(value: context.state.distance))
+            .contentTransition(.numericText(value: displayDistance))
             .foregroundStyle(Color.black.opacity(0.6))
-          if goal > 0 {
+          if displayGoal > 0 {
             ProgressView("You completed \(percentage, specifier: "%.1f")% of your goal", value: progress)
               .contentTransition(.numericText(value: percentage))
               .font(.subheadline)
@@ -38,7 +46,7 @@ struct LastRouteWidgetLiveActivity: Widget {
         Image(systemName: "point.bottomleft.forward.to.point.topright.scurvepath")
           .resizable()
           .scaledToFit()
-          .frame(width: 40, height: (goal > 0) ? 40 : 30)
+          .frame(width: 40, height: (displayGoal > 0) ? 40 : 30)
           .bold()
           .foregroundStyle(Color.black.opacity(0.6))
         /*
@@ -55,9 +63,13 @@ struct LastRouteWidgetLiveActivity: Widget {
     } dynamicIsland: { context in
       DynamicIsland {
         DynamicIslandExpandedRegion(.leading) {
+          let unit = context.attributes.unit
+          let displayDistance = unit ? context.state.distance : context.state.distance * 3.28084
+          let unitAbbr = unit ? "m" : "ft"
+
           HStack{
             Image(systemName: "figure.walk")
-            Text("\(context.state.distance, specifier: "%.1f") m")
+            Text("\(displayDistance, specifier: "%.1f") \(unitAbbr)")
           }
         }
         DynamicIslandExpandedRegion(.trailing) {
@@ -67,16 +79,21 @@ struct LastRouteWidgetLiveActivity: Widget {
           }
         }
         DynamicIslandExpandedRegion(.bottom) {
+          let unit = context.attributes.unit
+          let displayDistance = unit ? context.state.distance : context.state.distance * 3.28084
+          let unitText = unit ? "meters" : "feet"
+          let goal = context.attributes.currentGoalOverride
+          let displayGoal = unit ? goal : goal * 3.28084
+          let progress = displayGoal > 0 ? min(displayDistance / displayGoal, 1.0) : 0.0
+          let percentage = progress * 100
+
           VStack(alignment: .leading, spacing: 10.0) {
             Spacer().frame(height: 10)
-            Text("You walked \(context.state.distance, specifier: "%.1f") meters and \(context.state.steps) steps")
+            Text("You walked \(displayDistance, specifier: "%.1f") \(unitText) and \(context.state.steps) steps")
               .font(.subheadline)
               .bold()
-              .contentTransition(.numericText(value: context.state.distance))
-            let goal = context.attributes.currentGoalOverride
-            let progress = min(context.state.distance / goal, 1.0)
-            let percentage = progress * 100
-            if goal > 0 {
+              .contentTransition(.numericText(value: displayDistance))
+            if displayGoal > 0 {
               ProgressView("You completed \(percentage, specifier: "%.1f")% of your goal", value: progress)
                 .contentTransition(.numericText(value: percentage))
                 .font(.title3)
@@ -87,9 +104,13 @@ struct LastRouteWidgetLiveActivity: Widget {
           .font(.footnote)
         }
       } compactLeading: {
+        let unit = context.attributes.unit
         let goal = context.attributes.currentGoalOverride
-        let progress = min(context.state.distance / goal, 1.0)
+        let displayDistance = unit ? context.state.distance : context.state.distance * 3.28084
+        let displayGoal = unit ? goal : goal * 3.28084
+        let progress = displayGoal > 0 ? min(displayDistance / displayGoal, 1.0) : 0.0
         let percentage = progress * 100
+
         ProgressView("\(percentage, specifier: "%.0f")",value: progress)
           .progressViewStyle(.circular)
           .bold()
@@ -110,7 +131,7 @@ struct LastRouteWidgetLiveActivity: Widget {
 // MARK: - Preview
 extension LastRouteWidgetAttributes {
     fileprivate static var preview: LastRouteWidgetAttributes {
-      LastRouteWidgetAttributes(name: "Matanyah's Walk", accentColor: .lavenderBlue, currentGoalOverride: 10)
+      LastRouteWidgetAttributes(name: "Matanyah's Walk", accentColor: .lavenderBlue, currentGoalOverride: 10, unit: false)
     }
 }
 

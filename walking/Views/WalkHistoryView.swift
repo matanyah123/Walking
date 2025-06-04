@@ -23,45 +23,64 @@ struct WalkHistoryView: View {
         return grouped.sorted { $0.key > $1.key }
     }
 
+  @State private var showDeleteConfirmation = false
+  @State private var walkToDelete: WalkData?
+
+  @AppStorage("unit", store: UserDefaults(suiteName: "group.com.matanyah.WalkTracker")) var unit: Bool = true
+
   var body: some View {
-    NavigationStack {
-      List {
-        ForEach(groupedWalks, id: \.0) { date, walks in
-          Section(header: Text(formattedDisplayDate(from: date)).font(.headline)) {
-            ForEach(walks) { walk in
-              NavigationLink(destination: WalkDetailView(walk: walk)) {
-                VStack(alignment: .leading) {
-                  Text("\(walk.distance, specifier: "%.2f") meters")
-                    .font(.body)
-                  Text("Steps: \(walk.steps)")
-                    .font(.caption)
-                    .foregroundColor(.secondary)
-                }
-                .padding(.vertical, 6)
-              }
-              .swipeActions(edge: .trailing) {
-                  Button(role: .destructive) {
-                      deleteWalk(walk)
-                  } label: {
-                      Label("Delete", systemImage: "trash")
-                  }.tint(.red)
-              }
-              .swipeActions(edge: .leading) {
-                  Button {
-                      shareWalkSnapshot(walk: walk)
-                  } label: {
-                      Label("Share", systemImage: "square.and.arrow.up")
+      NavigationStack {
+          List {
+            if !groupedWalks.isEmpty {
+              ForEach(groupedWalks, id: \.0) { date, walks in
+                Section(header: Text(formattedDisplayDate(from: date)).font(.headline)) {
+                  ForEach(walks) { walk in
+                    NavigationLink(destination: WalkDetailView(walk: walk)) {
+                      VStack(alignment: .leading) {
+                        Text("\(walk.distance, specifier: "%.2f") \(unit ? "meters" : "miles")")
+                          .font(.body)
+                        Text("Steps: \(walk.steps)")
+                          .font(.caption)
+                          .foregroundColor(.secondary)
+                      }
+                      .padding(.vertical, 6)
+                    }
+                    .swipeActions(edge: .trailing) {
+                      Button(role: .destructive) {
+                        walkToDelete = walk
+                        showDeleteConfirmation = true
+                      } label: {
+                        Label("Delete", systemImage: "trash")
+                      }
+                      .tint(.red)
+                    }
+                    .swipeActions(edge: .leading) {
+                      Button {
+                        shareWalkSnapshot(walk: walk)
+                      } label: {
+                        Label("Share", systemImage: "square.and.arrow.up")
+                      }
+                    }
                   }
+                }
               }
+            } else {
+              Text("No walks yet!")
             }
           }
-        }
+          .navigationTitle("Walk History")
       }
-      .navigationTitle("Walk History")
-    }
-    .onAppear {
-      walkHistory = loadSavedWalks()
-    }
+      .alert("Are you sure?", isPresented: $showDeleteConfirmation, presenting: walkToDelete) { walk in
+          Button("Delete", role: .destructive) {
+              deleteWalk(walk)
+          }
+          Button("Cancel", role: .cancel) { }
+      } message: { walk in
+          Text("This action cannot be undone.")
+      }
+      .onAppear {
+          walkHistory = loadSavedWalks()
+      }
   }
 
     private func deleteWalk(_ walk: WalkData) {
@@ -192,6 +211,8 @@ struct WalkDetailView: View {
     @State private var isViewReady = false
     @State private var shouldShareAfterLoad = false
   @State private var trackingMode: Int = 0
+  @AppStorage("darkMode", store: UserDefaults(suiteName: "group.com.matanyah.WalkTracker")) var darkMode: Bool = true
+  @AppStorage("unit", store: UserDefaults(suiteName: "group.com.matanyah.WalkTracker")) var unit: Bool = true
 
     var body: some View {
         GeometryReader { geometry in
@@ -204,16 +225,12 @@ struct WalkDetailView: View {
                     portraitView
                 }
             }
-            .background {
-                Color.white.ignoresSafeArea()
-                Color.black.opacity(0.85).ignoresSafeArea()
-            }
-            .scrollContentBackground(.hidden)
         }
         .sheet(isPresented: $isMiniMapOpen) {
             ZStack {
               MapView(route: walk.route.map { CLLocation(latitude: $0.latitude, longitude: $0.longitude) }, showUserLocation: false, trackingMode: $trackingMode)
                     .ignoresSafeArea()
+                    .colorScheme(darkMode ? .dark : .light)
                 VStack {
                     BlurView(style: .systemUltraThinMaterial)
                         .frame(width: 500, height: 25)
@@ -251,7 +268,7 @@ struct WalkDetailView: View {
                       Text("Distance")
                           .font(.caption)
                           .foregroundColor(.secondary)
-                      Text("\(walk.distance, specifier: "%.2f") m")
+                      Text("\(walk.distance, specifier: "%.2f") \(unit ? "me" : "mi")")
                           .font(.headline)
                   }
                   Spacer()
@@ -301,7 +318,7 @@ struct WalkDetailView: View {
                 Text("Distance")
                   .font(.caption)
                   .foregroundColor(.secondary)
-                Text("\(walk.distance, specifier: "%.2f") m")
+                Text("\(walk.distance, specifier: "%.2f") \(unit ? "me" : "mi")")
                   .font(.headline)
               }
               Spacer()
@@ -337,8 +354,8 @@ struct WalkDetailView: View {
             WalkCard {
                 HStack {
                     VStack(alignment: .leading, spacing: 8) {
-                        Text("Elevation Gain: \(walk.elevationGain, specifier: "%.2f") m")
-                        Text("Elevation Loss: \(walk.elevationLoss, specifier: "%.2f") m")
+                        Text("Elevation Gain: \(walk.elevationGain, specifier: "%.2f") \(unit ? "me" : "mi")")
+                        Text("Elevation Loss: \(walk.elevationLoss, specifier: "%.2f") \(unit ? "me" : "mi")")
                     }
                     Spacer()
                 }
@@ -391,7 +408,7 @@ struct WalkDetailView: View {
   WalkHistoryView()
     .preferredColorScheme(.dark)
 }
-
+*/
 #Preview {
    var walkHistory: [WalkData] = loadSavedWalks()
    @State var isViewReady = false
@@ -409,11 +426,10 @@ struct WalkDetailView: View {
   if let latestGroup = groupedWalks.first,
      let firstWalk = latestGroup.1.first {
     Sharedview(walk: firstWalk, isViewReady: $isViewReady)
-      .preferredColorScheme(.dark)
+      .preferredColorScheme(.light)
   }
 }
-*/
-
+/*
 #Preview {
    var walkHistory: [WalkData] = loadSavedWalks()
    @State var isViewReady = false
@@ -431,6 +447,7 @@ struct WalkDetailView: View {
   if let latestGroup = groupedWalks.first,
      let firstWalk = latestGroup.1.first {
     WalkDetailView(walk: firstWalk)
-      .preferredColorScheme(.dark)
+      .preferredColorScheme(.light)
   }
 }
+ */

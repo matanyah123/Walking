@@ -42,8 +42,7 @@ struct StartWalkingIntent: AppIntent {
   static let title: LocalizedStringResource = "Start Walking"
 
   func perform() async throws -> some IntentResult {
-    WalkSessionManager.shared.start()
-    print("Walk started!")
+    print("Requested walk start")
     return .result()
   }
 }

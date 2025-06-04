@@ -18,18 +18,30 @@ struct walkingApp: App {
       ContentView(deepLink: $deepLink)
         .environmentObject(appTheme)
         .tint(appTheme.accentColor)
-        .preferredColorScheme(.dark)
         .onOpenURL { url in
-          if url.host == "start" {
-            deepLink = "start"
+          if url.scheme == "walking", url.host == "start" {            deepLink = "group.com.matanyah.walking.start"
           }
         }
     }
   }
 }
+/*
+class DataMigrationService {
+    static func migrateWalkDataToSwiftData(walkDataItems: [WalkData], modelContext: ModelContext) {
+        for walkData in walkDataItems {
+            let walkDataItem = WalkDataItem(from: walkData)
+            modelContext.insert(walkDataItem)
+        }
 
-//boooo
-
+        do {
+            try modelContext.save()
+            print("Migration completed successfully")
+        } catch {
+            print("Migration failed: \(error)")
+        }
+    }
+}
+*/
 #Preview {
   @Previewable @State var deepLink: String? = "start"
   ContentView(deepLink: $deepLink)
@@ -37,7 +49,7 @@ struct walkingApp: App {
 }
 
 class AppTheme: ObservableObject {
-    @Published var accentColor: Color = .blue
+  @Published var accentColor: Color = .accentFromSettings
     private var cancellables = Set<AnyCancellable>()
 
     init() {

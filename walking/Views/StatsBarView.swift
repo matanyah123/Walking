@@ -13,12 +13,13 @@ struct StatsBarView: View {
   var goal: Double?
   @ObservedObject var locationManager: LocationManager
   @ObservedObject var motionManager: MotionManager
+  @AppStorage("unit", store: UserDefaults(suiteName: "group.com.matanyah.WalkTracker")) var unit: Bool = true
   var body: some View {
     ZStack {
       BlurView(style: .systemUltraThinMaterialDark)
         .cornerRadius(10)
         .innerShadow(radius: 10)
-        .frame(width: isStatsBarOpen ? 382.5 : 75.0,
+        .frame(width: isStatsBarOpen ? .infinity : 75.0,
                height: isStatsBarOpen ? 275.0 : 75.0)
         .overlay {
           if isStatsBarOpen {
@@ -28,52 +29,36 @@ struct StatsBarView: View {
           }
         }
     }
-    .contextMenu {
-      Text("View current walk data")
-    }
   }
 
   private var collapsedView: some View {
-    VStack {
-      if locationManager.hasSavedWalk {
-          Button(action: resumePreviousWalk) {
-              Text("🚶 Resume Previous Walk")
-                  .font(.headline)
-                  .padding()
-                  .background(Color.green.opacity(0.8))
-                  .foregroundColor(.white)
-                  .cornerRadius(12)
-          }
-      } else {
-        if started {
-          VStack(spacing: 4) {
-            Image(systemName: "shoeprints.fill")
-              .font(.headline)
-              .foregroundColor(.white)
+      VStack {
+          if locationManager.isTracking {
+              // Show current walk stats when actively tracking
+              VStack(spacing: 4) {
+                  Image(systemName: "shoeprints.fill")
+                      .font(.headline)
+                      .foregroundColor(.white)
 
-            Text("\(String(format: "%.2f", locationManager.distance)) M")
-              .font(.caption2)
-              .bold()
+                  let distanceValue = unit ? locationManager.distance : locationManager.distance * 3.28084
+                  let unitLabel = unit ? "m" : "ft"
+                  Text("\(String(format: "%.2f", distanceValue)) \(unitLabel)")
+                      .font(.caption2)
+                      .bold()
+
+                  // Optional: Show tracking status
+                  Text("Tracking...")
+                      .font(.caption2)
+                      .opacity(0.7)
+              }
+          } else {
+              // Default state - no active or paused walk
+              Text("Good to\nsee you!")
+                  .font(.subheadline)
+                  .opacity(0.75)
+                  .multilineTextAlignment(.center)
           }
-        } else {
-          Text("Good to\nsee you!")
-            .font(.subheadline)
-            .opacity(0.75)
-            .multilineTextAlignment(.center)
-        }
       }
-    }
-    .onAppear {
-      locationManager.checkSavedState()
-    }
-  }
-
-  func resumePreviousWalk() {
-      locationManager.loadState()
-      motionManager.resumeTracking()
-      locationManager.startTracking()
-      tracking = true
-      started = true
   }
 
   private var expandedView: some View {
@@ -83,14 +68,30 @@ struct StatsBarView: View {
           Text("Walk details").font(.title2).bold()
           Divider().frame(width: 110)
             .background(Color.white)
+
           StatLabel("Steps", value: "\(motionManager.stepCount)")
-          StatLabel("Max Speed", value: "\(String(format: "%.2f", locationManager.maxSpeed)) km/h")
-          StatLabel("Distance", value: "\(String(format: "%.2f", locationManager.distance)) meters")
-          StatLabel("Elevation Gain", value: "\(String(format: "%.2f", locationManager.elevationGain)) meters")
-          StatLabel("Elevation Loss", value: "\(String(format: "%.2f", locationManager.elevationLoss)) meters")
+
+          // Speed conversion: km/h <-> mph
+          let speedInKmH = locationManager.maxSpeed * 3.6
+          let speedValue = unit ? speedInKmH : speedInKmH * 0.621371
+          StatLabel("Max Speed", value: "\(String(format: "%.2f", speedValue)) \(unit ? "km/h" : "mph")")
+
+          // Distance conversion: meters <-> feet
+          let distanceValue = unit ? locationManager.distance : locationManager.distance * 3.28084
+          StatLabel("Distance", value: "\(String(format: "%.2f", distanceValue)) \(unit ? "meters" : "feet")")
+
+          // Elevation Gain conversion
+          let elevationGainValue = unit ? locationManager.elevationGain : locationManager.elevationGain * 3.28084
+          StatLabel("Elevation Gain", value: "\(String(format: "%.2f", elevationGainValue)) \(unit ? "meters" : "feet")")
+
+          // Elevation Loss conversion
+          let elevationLossValue = unit ? locationManager.elevationLoss : locationManager.elevationLoss * 3.28084
+          StatLabel("Elevation Loss", value: "\(String(format: "%.2f", elevationLossValue)) \(unit ? "meters" : "feet")")
 
           if let goal = goal {
-            ProgressView("Progress", value: min(locationManager.distance / goal, 1.0))
+            let goalValue = unit ? goal : goal * 3.28084
+            let progressValue = min(distanceValue / goalValue, 1.0)
+            ProgressView("Progress", value: progressValue)
               .frame(width: 300.0)
               .font(.body)
               .bold()
@@ -123,13 +124,13 @@ struct StatsBarView: View {
   }
 }
 
-/*
 #Preview("Open - Dummy Track Active") {
+  @Previewable @State var started: Bool = false
   ZStack{
     BlurView(style: .systemThinMaterialDark).ignoresSafeArea(.all)
     StatsBarView(
       isStatsBarOpen: .constant(true),
-      started: .constant(true), tracking: <#Binding<Bool>#>,
+      started: .constant(true), tracking: $started,
       goal: 1000.0,
       locationManager: {
         let manager = LocationManager()
@@ -149,11 +150,12 @@ struct StatsBarView: View {
 }
 
 #Preview("Closed - Dummy Track Active") {
+  @Previewable @State var started: Bool = false
   ZStack{
     BlurView(style: .systemThinMaterialDark).ignoresSafeArea(.all)
     StatsBarView(
         isStatsBarOpen: .constant(false),
-        started: .constant(true),
+        started: .constant(true), tracking: $started,
         goal: 1000.0,
         locationManager: {
             let manager = LocationManager()
@@ -171,20 +173,22 @@ struct StatsBarView: View {
     )
   }.preferredColorScheme(.dark)
 }
-
+/*
 #Preview("Open - No Track") {
+  @Previewable @State var started: Bool = false
   ZStack{
-    BlurView(style: .systemThinMaterialDark).ignoresSafeArea(.all)
+    BackgroundView().preferredColorScheme(.dark).frame(width: 400)
+    BlurView(style: .systemThinMaterialDark).ignoresSafeArea(.all).preferredColorScheme(.dark).frame(width: 400)
     StatsBarView(
         isStatsBarOpen: .constant(true),
-        started: .constant(false),
+        started: .constant(false), tracking: $started,
         goal: nil,
         locationManager: LocationManager(),
         motionManager: MotionManager()
     )
-  }.preferredColorScheme(.dark)
+    .padding()
+  }
 }
-
 #Preview("Closed - No Track") {
   ZStack{
     BlurView(style: .systemThinMaterialDark).ignoresSafeArea(.all)

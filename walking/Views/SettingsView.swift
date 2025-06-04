@@ -20,10 +20,12 @@ struct AppIcon: Identifiable {
 struct SettingsView: View {
   @Binding var doYouNeedAGoal: Bool
   @State private var showingColorPresets = false
+  @State private var showingIconPresets = false
   @AppStorage(SharedKeys.goalTarget, store: UserDefaults(suiteName: "group.com.matanyah.WalkTracker")) var goalTarget = 5000
   @AppStorage("notificationsEnabled", store: UserDefaults(suiteName: "group.com.matanyah.WalkTracker")) private var notificationsEnabled: Bool = true
   @AppStorage("active_icon", store: UserDefaults(suiteName: "group.com.matanyah.WalkTracker")) private var activeAppIcon: String = "AppIcon"
-  @AppStorage("mapStyleDarkMode", store: UserDefaults(suiteName: "group.com.matanyah.WalkTracker")) private var mapStyleDarkMode: Bool = true
+  @AppStorage("darkMode", store: UserDefaults(suiteName: "group.com.matanyah.WalkTracker")) private var darkMode: Bool = true
+  @AppStorage("unit", store: UserDefaults(suiteName: "group.com.matanyah.WalkTracker")) private var unit: Bool = true
   @AppStorage("accentColor", store: UserDefaults(suiteName: "group.com.matanyah.WalkTracker")) private var storedColorData: Data = {
     try! JSONEncoder().encode(CodableColor.lavenderBlue) // Default to Lavender Blue 💜
   }()
@@ -47,14 +49,6 @@ struct SettingsView: View {
     }
   }
 
-  private let customIcons: [AppIcon] = [
-    AppIcon(name: "AppIcon", displayName: "Default (white)"),
-    AppIcon(name: "AppIcon-Blue", displayName: "Lavender Blue"),
-    AppIcon(name: "AppIcon-Mint", displayName: "Turquoise Mint"),
-    AppIcon(name: "AppIcon-Orange", displayName: "Vibrant Orange"),
-    AppIcon(name: "AppIcon-Green", displayName: "Lime Green")
-
-  ]
   private var currentCodableColor: CodableColor? {
     try? JSONDecoder().decode(CodableColor.self, from: storedColorData)
   }
@@ -75,9 +69,33 @@ struct SettingsView: View {
     }
   }
 
+  private var currentIconDisplayName: String {
+      switch activeAppIcon {
+      case "AppIcon":
+        return darkMode ? "Default (white)" : "Default (white)-L"
+      case "AppIcon-Blue":
+        return darkMode ? "Lavender Blue" : "Lavender Blue-L"
+      case "AppIcon-Mint":
+        return darkMode ? "Turquoise Mint" : "Turquoise Mint-L"
+      case "AppIcon-Orange":
+        return darkMode ? "Vibrant Orange" : "Vibrant Orange-L"
+      case "AppIcon-Green":
+        return darkMode ? "Lime Green" : "Lime Green-L"
+      default:
+        return darkMode ?  "Default (white)" :"Default (white)-L"
+      }
+    }
+
   var body: some View {
     NavigationStack {
       List {
+
+        Section(header: Text("Payment Wall")) {
+            NavigationLink("View Paywall") {
+                PaymentWall()
+            }
+        }
+
         // Goals & Targets Section
         Section(header: Text("Goals & Targets")) {
           Toggle(isOn: $doYouNeedAGoal) {
@@ -92,7 +110,7 @@ struct SettingsView: View {
           if doYouNeedAGoal {
             Stepper(value: $goalTarget, in: 1000...20000, step: 500) {
               VStack(alignment: .leading) {
-                Text("Default Goal: \(goalTarget) meter")
+                Text("Default Goal: \(goalTarget.formatted(.number)) meter")
                 Text("Starting target for your daily walks")
                   .font(.caption)
                   .foregroundColor(.secondary)
@@ -103,48 +121,61 @@ struct SettingsView: View {
 
         // Appearance Section
         Section(header: Text("Appearance"), footer: Text("The accent color will be used throughout the app")) {
-          ColorPicker("Accent Color", selection: Binding(
-            get: { accentColor },
-            set: { saveAccentColor($0) }
-          ))
-
-          HStack {
-              Button("Choose Preset Colors") {
+              Button{
                   showingColorPresets.toggle()
+              }label: {
+                ColorPicker("Choose Preset Colors", selection: Binding(
+                    get: { accentColor },
+                    set: { saveAccentColor($0) }
+                ), supportsOpacity: false)
+                .colorScheme(darkMode ? .dark : .light)
               }
-              Spacer()
-              Text(accentColorName)
-                  .font(.subheadline)
-                  .foregroundColor(.secondary)
-          }
-
           .sheet(isPresented: $showingColorPresets) {
             PresetColorsView(selectColor: savePresetColor)
               .presentationDetents([.medium ,.large])
               .presentationDragIndicator(.visible)
+              .colorScheme(darkMode ? .dark : .light)
           }
-        }
 
-        Section(header: Text("map style"), footer: Text("The Appearance will be used on any map")) {
-          Toggle(isOn: $mapStyleDarkMode) {
+          Button{
+              showingIconPresets.toggle()
+          }label: {
+            HStack{
+              Text("Choose App Icon")
+              Spacer()
+              Image(currentIconDisplayName)
+                  .resizable()
+                  .aspectRatio(1, contentMode: .fit)
+                  .frame(width: 29, height: 29)
+                  .clipShape(RoundedRectangle(cornerRadius: 8, style: .continuous))
+                  .clipShape(RoundedRectangle(cornerRadius: 8, style: .continuous))
+                  .overlay(
+                    RoundedRectangle(cornerRadius: 8, style: .continuous)
+                      .stroke(
+                            Color.accentFromSettings,
+                            lineWidth: 1
+                          )
+                  )
+            }
+          }
+          .sheet(isPresented: $showingIconPresets) {
+            AppIconPickerView(activeAppIcon: $activeAppIcon)
+              .presentationDetents([.medium ,.large])
+              .presentationDragIndicator(.visible)
+              .colorScheme(darkMode ? .dark : .light)
+          }
+          Toggle(isOn: $darkMode) {
             Text("Dark Mode")
           }
         }
 
-        // App Icon Section
-        Section(header: Text("App Icon")) {
-          Picker(selection: $activeAppIcon, label: Text("Select App Icon")) {
-            ForEach(customIcons) { icon in
-              Text(icon.displayName)
-                .tag(icon.name)
+        Section(
+            header: Text("Units"),
+            footer: Text("Metrics or Imperial")
+        ) {
+            Toggle(isOn: $unit) {
+                Text("Current unit: \(unit ? "KM" : "MI")")
             }
-          }
-          .id(storedColorData)
-          .onChange(of: activeAppIcon) {
-            UIApplication.shared.setAlternateIconName(
-              activeAppIcon == "AppIcon" ? nil : activeAppIcon
-            )
-          }
         }
 
         // Additional Settings Section
@@ -152,7 +183,7 @@ struct SettingsView: View {
             header: Text("Additional Settings"),
             footer: Text(" ").frame(height: 75)
         ) {
-          Toggle("Enable Notifications", isOn: $notificationsEnabled)
+          //Toggle("Enable Notifications", isOn: $notificationsEnabled)
 
           NavigationLink(destination: AboutView()) {
             Label("About This App", systemImage: "info.circle")
@@ -164,10 +195,12 @@ struct SettingsView: View {
               .foregroundStyle(Color.accentFromSettings)
           }
 
+          /*
           NavigationLink(destination: ThanksView()) {
             Label("Thank You", systemImage: "heart.circle")
               .foregroundStyle(Color.accentFromSettings)
           }
+           */
         }
       }
       .navigationTitle("Settings")
@@ -340,6 +373,99 @@ struct PresetColorsView: View {
 }
 
 
+// MARK: - App Icon Picker View
+struct AppIconPickerView: View {
+    @Binding var activeAppIcon: String
+    @Environment(\.dismiss) var dismiss
+  @AppStorage("darkMode", store: UserDefaults(suiteName: "group.com.matanyah.WalkTracker")) var darkMode: Bool = true
+
+  private var icons: [AppIcon] {
+      [
+          AppIcon(name: "AppIcon", displayName: "Default (white)"),
+          AppIcon(name: "AppIcon-Blue", displayName: "Lavender Blue"),
+          AppIcon(name: "AppIcon-Mint", displayName: "Turquoise Mint"),
+          AppIcon(name: "AppIcon-Orange", displayName: "Vibrant Orange"),
+          AppIcon(name: "AppIcon-Green", displayName: "Lime Green")
+      ]
+  }
+
+    private let columns = [
+        GridItem(.adaptive(minimum: 100), spacing: 20)
+    ]
+
+    var body: some View {
+        NavigationStack {
+            ScrollView {
+                LazyVGrid(columns: columns, spacing: 20) {
+                    ForEach(icons) { icon in
+                        VStack(spacing: 12) {
+                            Button {
+                                selectIcon(icon)
+                            } label: {
+                                Image(icon.displayName)
+                                    .resizable()
+                                    .aspectRatio(1, contentMode: .fit)
+                                    .frame(width: 80, height: 80)
+                                    .clipShape(RoundedRectangle(cornerRadius: 18, style: .continuous))
+                                    .overlay(
+                                        RoundedRectangle(cornerRadius: 18, style: .continuous)
+                                            .stroke(
+                                                activeAppIcon == icon.name ? Color.accentColor : Color.clear,
+                                                lineWidth: 3
+                                            )
+                                    )
+                                    .shadow(color: .black.opacity(0.15), radius: 8, x: 0, y: 4)
+                                    .scaleEffect(activeAppIcon == icon.name ? 1.05 : 1.0)
+                                    .animation(.easeInOut(duration: 0.2), value: activeAppIcon)
+                            }
+                            .buttonStyle(PlainButtonStyle())
+
+                            Text(icon.displayName)
+                                .font(.caption)
+                                .fontWeight(activeAppIcon == icon.name ? .semibold : .regular)
+                                .multilineTextAlignment(.center)
+                                .foregroundColor(activeAppIcon == icon.name ? .accentColor : .primary)
+                                .animation(.easeInOut(duration: 0.2), value: activeAppIcon)
+                        }
+                    }
+                }
+                .padding(.horizontal, 20)
+                .padding(.top, 20)
+            }
+            .navigationTitle("Choose App Icon")
+            .navigationBarTitleDisplayMode(.inline)
+            .toolbar {
+                ToolbarItem(placement: .navigationBarTrailing) {
+                    Button("Done") {
+                        dismiss()
+                    }
+                }
+            }
+        }
+    }
+
+    private func selectIcon(_ icon: AppIcon) {
+        // Haptic feedback for selection
+        let impactFeedback = UIImpactFeedbackGenerator(style: .medium)
+        impactFeedback.impactOccurred()
+
+        withAnimation(.easeInOut(duration: 0.2)) {
+            activeAppIcon = icon.name
+        }
+
+        // Change the app icon
+        UIApplication.shared.setAlternateIconName(
+            icon.name == "AppIcon" ? nil : icon.name
+        ) { error in
+            if let error = error {
+                print("Failed to change app icon: \(error)")
+            }
+        }
+    }
+}
+
+
+
 
 // MARK: - About View
 struct AboutView: View {
@@ -456,19 +582,20 @@ struct ThanksView: View {
   }
 }
 
+/*
 #Preview {
   @State var deepLink: String?
   ContentView(deepLink: $deepLink)
     .preferredColorScheme(.dark)
 }
-
-/*
+*/
 // MARK: - Preview
 #Preview("Settings View") {
   @Previewable @State var doYouNeedAGoal: Bool = false
   SettingsView(doYouNeedAGoal: $doYouNeedAGoal)
-    .preferredColorScheme(.dark)
+    .preferredColorScheme(.light)
 }
+ /*
 #Preview("Preset Colors") {
   PresetColorsView(selectColor: { _ in })
 }
