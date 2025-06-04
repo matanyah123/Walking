@@ -645,10 +645,13 @@
 				INFOPLIST_FILE = walking/Info.plist;
 				INFOPLIST_KEY_CFBundleDisplayName = Walking;
 				INFOPLIST_KEY_LSApplicationCategoryType = "public.app-category.healthcare-fitness";
+				INFOPLIST_KEY_NSCameraUsageDescription = "We need access to your camera to take photos.";
 				INFOPLIST_KEY_NSLocationAlwaysAndWhenInUseUsageDescription = "We need your location to track your walk, even when the app is in the background.";
 				INFOPLIST_KEY_NSLocationAlwaysUsageDescription = "We need your location to track your walk, even when the app is in the background.";
 				INFOPLIST_KEY_NSLocationWhenInUseUsageDescription = "We need your location to track your walks.";
 				INFOPLIST_KEY_NSMotionUsageDescription = "We need access to your motion data to track your steps.";
+				INFOPLIST_KEY_NSPhotoLibraryAddUsageDescription = "We need to save your photos to your library.";
+				INFOPLIST_KEY_NSPhotoLibraryUsageDescription = "We need access to your photo library to let you pick images.";
 				INFOPLIST_KEY_NSSupportsLiveActivities = YES;
 				INFOPLIST_KEY_UIApplicationSceneManifest_Generation = YES;
 				INFOPLIST_KEY_UIApplicationSupportsIndirectInputEvents = YES;
@@ -688,10 +691,13 @@
 				INFOPLIST_FILE = walking/Info.plist;
 				INFOPLIST_KEY_CFBundleDisplayName = Walking;
 				INFOPLIST_KEY_LSApplicationCategoryType = "public.app-category.healthcare-fitness";
+				INFOPLIST_KEY_NSCameraUsageDescription = "We need access to your camera to take photos.";
 				INFOPLIST_KEY_NSLocationAlwaysAndWhenInUseUsageDescription = "We need your location to track your walk, even when the app is in the background.";
 				INFOPLIST_KEY_NSLocationAlwaysUsageDescription = "We need your location to track your walk, even when the app is in the background.";
 				INFOPLIST_KEY_NSLocationWhenInUseUsageDescription = "We need your location to track your walks.";
 				INFOPLIST_KEY_NSMotionUsageDescription = "We need access to your motion data to track your steps.";
+				INFOPLIST_KEY_NSPhotoLibraryAddUsageDescription = "We need to save your photos to your library.";
+				INFOPLIST_KEY_NSPhotoLibraryUsageDescription = "We need access to your photo library to let you pick images.";
 				INFOPLIST_KEY_NSSupportsLiveActivities = YES;
 				INFOPLIST_KEY_UIApplicationSceneManifest_Generation = YES;
 				INFOPLIST_KEY_UIApplicationSupportsIndirectInputEvents = YES;

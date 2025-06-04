@@ -23,6 +23,7 @@ class ContentViewModel: ObservableObject {
   @Published var offset: CGFloat = 0
   @Published var tracking = false
   @Published var started = false
+  @Published var isCameraOpen = false
   @Published var goal: Double? {
     didSet {
       if let goal = goal {
@@ -174,6 +175,27 @@ struct ContentView: View {
 
           if !viewModel.isStatsBarOpen {
             Spacer()
+          }
+        }
+        if viewModel.tracking {
+          HStack{
+            Button{
+              withAnimation(.easeInOut(duration: 0.09)) {
+                viewModel.isCameraOpen.toggle()
+              }
+            }label: {
+              Image(systemName: "camera.fill")
+                .foregroundColor(.white)
+                .padding()
+                .background(BlurView(style: .systemUltraThinMaterialDark).cornerRadius(10).innerShadow(radius: 10))
+            }
+            Spacer()
+          }
+          .padding(.top)
+          .sheet(isPresented: $viewModel.isCameraOpen) {
+            CameraView()
+              .presentationDetents([.medium ,.large])
+              .presentationDragIndicator(.visible)
           }
         }
         Spacer()

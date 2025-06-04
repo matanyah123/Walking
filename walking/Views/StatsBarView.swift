@@ -173,32 +173,3 @@ struct StatsBarView: View {
     )
   }.preferredColorScheme(.dark)
 }
-/*
-#Preview("Open - No Track") {
-  @Previewable @State var started: Bool = false
-  ZStack{
-    BackgroundView().preferredColorScheme(.dark).frame(width: 400)
-    BlurView(style: .systemThinMaterialDark).ignoresSafeArea(.all).preferredColorScheme(.dark).frame(width: 400)
-    StatsBarView(
-        isStatsBarOpen: .constant(true),
-        started: .constant(false), tracking: $started,
-        goal: nil,
-        locationManager: LocationManager(),
-        motionManager: MotionManager()
-    )
-    .padding()
-  }
-}
-#Preview("Closed - No Track") {
-  ZStack{
-    BlurView(style: .systemThinMaterialDark).ignoresSafeArea(.all)
-    StatsBarView(
-        isStatsBarOpen: .constant(false),
-        started: .constant(false),
-        goal: nil,
-        locationManager: LocationManager(),
-        motionManager: MotionManager()
-    )
-  }.preferredColorScheme(.dark)
-}
-*/
