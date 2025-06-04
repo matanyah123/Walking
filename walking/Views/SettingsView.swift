@@ -6,6 +6,8 @@
 
 import SwiftUI
 import UIKit
+import SwiftData
+import WidgetKit
 
 
 // MARK: - AppIcon Definition
@@ -18,6 +20,7 @@ struct AppIcon: Identifiable {
 
 // MARK: - Settings View
 struct SettingsView: View {
+  @Environment(\.modelContext) private var modelContext
   @Binding var doYouNeedAGoal: Bool
   @State private var showingColorPresets = false
   @State private var showingIconPresets = false

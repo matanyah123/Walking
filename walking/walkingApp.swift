@@ -8,6 +8,7 @@
 import SwiftUI
 import Combine
 import ActivityKit
+import SwiftData
 
 @main
 struct walkingApp: App {
@@ -22,26 +23,10 @@ struct walkingApp: App {
           if url.scheme == "walking", url.host == "start" {            deepLink = "group.com.matanyah.walking.start"
           }
         }
-    }
+    }.modelContainer(for: WalkData.self)
   }
 }
-/*
-class DataMigrationService {
-    static func migrateWalkDataToSwiftData(walkDataItems: [WalkData], modelContext: ModelContext) {
-        for walkData in walkDataItems {
-            let walkDataItem = WalkDataItem(from: walkData)
-            modelContext.insert(walkDataItem)
-        }
 
-        do {
-            try modelContext.save()
-            print("Migration completed successfully")
-        } catch {
-            print("Migration failed: \(error)")
-        }
-    }
-}
-*/
 #Preview {
   @Previewable @State var deepLink: String? = "start"
   ContentView(deepLink: $deepLink)

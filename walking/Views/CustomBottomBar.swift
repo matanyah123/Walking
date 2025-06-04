@@ -7,6 +7,7 @@
 import SwiftUI
 import WidgetKit
 import ActivityKit
+import SwiftData
 
 struct CustomBottomBar: View {
   @Binding var started: Bool
@@ -21,6 +22,8 @@ struct CustomBottomBar: View {
   @ObservedObject var locationManager: LocationManager
   @ObservedObject var motionManager: MotionManager
   @ObservedObject var liveActivityManager: LiveActivityManager
+  @Environment(\.modelContext) private var modelContext
+  @Query var savedWalks: [WalkData]
   @State private var timer: Timer? = nil
   @State private var showDeleteConfirmation = false
   @Binding var trackingMode: Int
@@ -380,34 +383,34 @@ struct CustomBottomBar: View {
       route: locationManager.route.map { $0.coordinate }
     )
 
-    let completedWalk = newWalk
-    saveWalkForWidget(walk: completedWalk)
-
-    var savedWalks = loadSavedWalks()
-    savedWalks.append(newWalk)
-
-    if let encoded = try? JSONEncoder().encode(savedWalks) {
-      UserDefaults.standard.set(encoded, forKey: "walkHistory")
+    // ✅ SwiftData: Save to persistent model context
+    modelContext.insert(newWalk)
+    do {
+      try modelContext.save()
+      print("✅ Walk saved with SwiftData")
+    } catch {
+      print("❌ Error saving walk: \(error)")
     }
 
-    // Save the latest walk for the widget in the shared app group
-    if let latestEncoded = try? JSONEncoder().encode(newWalk) {
-      UserDefaults(suiteName: "group.com.matanyah.WalkTracker")?.set(latestEncoded, forKey: "latestWalk")
-      WidgetCenter.shared.reloadAllTimelines() // Refresh widget timeline immediately
-    }
-  }
-
-  private func loadSavedWalks() -> [WalkData] {
-    if let savedData = UserDefaults.standard.data(forKey: "walkHistory"),
-       let walkHistory = try? JSONDecoder().decode([WalkData].self, from: savedData) {
-      return walkHistory
-    }
-    return []
+    // ✅ Still save the latest walk for the widget
+    saveWalkForWidget(walk: newWalk)
   }
 
   // This function is referenced but not implemented in the original code
   private func saveWalkForWidget(walk: WalkData) {
-    // Implementation would go here
+    guard let sharedDefaults = UserDefaults(suiteName: "group.com.matanyah.WalkTracker") else {
+      print("Failed to access shared UserDefaults")
+      return
+    }
+
+    // Save the walk data
+    do {
+      let encodedWalk = try JSONEncoder().encode(walk)
+      sharedDefaults.set(encodedWalk, forKey: "latestWalk")
+      print("Successfully saved walk data to shared UserDefaults")
+    } catch {
+      print("Error encoding walk data: \(error)")
+    }
   }
 }
 
@@ -431,23 +434,6 @@ struct TabIcon: View {
       Image(systemName: icon)
         .foregroundColor(.white.opacity(isSelected ? 1 : 0.75))
     }
-  }
-}
-
-// Add this function to the file where you save walks (likely ContentView.swift)
-func saveWalkForWidget(walk: WalkData) {
-  guard let sharedDefaults = UserDefaults(suiteName: "group.com.matanyah.WalkTracker") else {
-    print("Failed to access shared UserDefaults")
-    return
-  }
-
-  // Save the walk data
-  do {
-    let encodedWalk = try JSONEncoder().encode(walk)
-    sharedDefaults.set(encodedWalk, forKey: "latestWalk")
-    print("Successfully saved walk data to shared UserDefaults")
-  } catch {
-    print("Error encoding walk data: \(error)")
   }
 }
 

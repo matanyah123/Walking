@@ -180,11 +180,6 @@ struct ContentView: View {
       }
       .padding()
     }
-
-  }
-
-  private func clearData() {
-    UserDefaults.standard.removeObject(forKey: "walkHistory")
   }
 }
 

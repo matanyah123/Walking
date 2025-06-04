@@ -6,9 +6,11 @@
 //
 import SwiftUI
 import WidgetKit
+import SwiftData
 
 struct WalkActivityView: View {
-  @State private var walkHistory: [WalkData] = loadSavedWalks()
+  @Environment(\.modelContext) private var modelContext
+  @Query(sort: \WalkData.date, order: .reverse) private var walkHistory: [WalkData]
 
   @AppStorage("unit", store: UserDefaults(suiteName: "group.com.matanyah.WalkTracker")) var unit: Bool = true
 
@@ -87,9 +89,6 @@ struct WalkActivityView: View {
         }
       }.navigationTitle("Your Activity")
     }
-    .onAppear {
-      walkHistory = loadSavedWalks()
-    }
   }
 
   private func formattedDisplayDate(from isoDate: String) -> String {
@@ -126,14 +125,6 @@ struct WalkActivityView: View {
           return String(format: "%02d:%02d", minutes, seconds)
       }
   }
-}
-
-private func loadSavedWalks() -> [WalkData] {
-    if let savedData = UserDefaults.standard.data(forKey: "walkHistory"),
-       let walkHistory = try? JSONDecoder().decode([WalkData].self, from: savedData) {
-        return walkHistory
-    }
-    return []
 }
 
 #Preview {

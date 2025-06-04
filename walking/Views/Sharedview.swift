@@ -174,37 +174,3 @@ struct WalkCard<Content: View>: View {
         .shadow(radius: 4)
     }
 }
-
-private func loadSavedWalks() -> [WalkData] {
-    if let savedData = UserDefaults.standard.data(forKey: "walkHistory"),
-       let walkHistory = try? JSONDecoder().decode([WalkData].self, from: savedData) {
-        return walkHistory
-    }
-    return []
-}
-
-#Preview {
-  struct PreviewWrapper: View {
-    @State private var isViewReady = false
-    var walkHistory: [WalkData] = loadSavedWalks()
-
-    var body: some View {
-      Group {
-        if let firstWalk = getLatestWalk() {
-          Sharedview(walk: firstWalk, isViewReady: $isViewReady)
-            .preferredColorScheme(.dark)
-        } else {
-          Text("No walks available")
-            .preferredColorScheme(.dark)
-        }
-      }
-    }
-
-    private func getLatestWalk() -> WalkData? {
-      let sortedWalks = walkHistory.sorted { $0.date > $1.date }
-      return sortedWalks.first
-    }
-  }
-
-  return PreviewWrapper()
-}

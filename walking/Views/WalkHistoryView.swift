@@ -6,185 +6,159 @@
 //
 import CoreLocation
 import WidgetKit
+import SwiftData
 import SwiftUI
 import MapKit
 import UIKit
 
 struct WalkHistoryView: View {
-    @State private var walkHistory: [WalkData] = loadSavedWalks()
+    @Environment(\.modelContext) private var modelContext
+
+    @Query(sort: \WalkData.date, order: .reverse) private var walkHistory: [WalkData]
 
     private var groupedWalks: [(String, [WalkData])] {
-        let sortedWalks = walkHistory.sorted { $0.date > $1.date }
-        let grouped = Dictionary(grouping: sortedWalks) { walk in
-            let formatter = DateFormatter()
-            formatter.dateFormat = "yyyy-MM-dd"
-            return formatter.string(from: walk.date)
+        let formatter = DateFormatter()
+        formatter.dateFormat = "yyyy-MM-dd"
+
+        let grouped = Dictionary(grouping: walkHistory) { walk in
+            formatter.string(from: walk.date)
         }
         return grouped.sorted { $0.key > $1.key }
     }
 
-  @State private var showDeleteConfirmation = false
-  @State private var walkToDelete: WalkData?
+    @State private var showDeleteConfirmation = false
+    @State private var walkToDelete: WalkData?
 
-  @AppStorage("unit", store: UserDefaults(suiteName: "group.com.matanyah.WalkTracker")) var unit: Bool = true
+    @AppStorage("unit", store: UserDefaults(suiteName: "group.com.matanyah.WalkTracker")) var unit: Bool = true
 
-  var body: some View {
-      NavigationStack {
-          List {
-            if !groupedWalks.isEmpty {
-              ForEach(groupedWalks, id: \.0) { date, walks in
-                Section(header: Text(formattedDisplayDate(from: date)).font(.headline)) {
-                  ForEach(walks) { walk in
-                    NavigationLink(destination: WalkDetailView(walk: walk)) {
-                      VStack(alignment: .leading) {
-                        Text("\(walk.distance, specifier: "%.2f") \(unit ? "meters" : "miles")")
-                          .font(.body)
-                        Text("Steps: \(walk.steps)")
-                          .font(.caption)
-                          .foregroundColor(.secondary)
-                      }
-                      .padding(.vertical, 6)
+    var body: some View {
+        NavigationStack {
+            List {
+                if !groupedWalks.isEmpty {
+                    ForEach(groupedWalks, id: \.0) { date, walks in
+                        Section(header: Text(formattedDisplayDate(from: date)).font(.headline)) {
+                            ForEach(walks) { walk in
+                                NavigationLink(destination: WalkDetailView(walk: walk)) {
+                                    VStack(alignment: .leading) {
+                                        Text("\(walk.distance, specifier: "%.2f") \(unit ? "meters" : "miles")")
+                                            .font(.body)
+                                        Text("Steps: \(walk.steps)")
+                                            .font(.caption)
+                                            .foregroundColor(.secondary)
+                                    }
+                                    .padding(.vertical, 6)
+                                }
+                                .swipeActions(edge: .trailing) {
+                                    Button(role: .destructive) {
+                                        walkToDelete = walk
+                                        showDeleteConfirmation = true
+                                    } label: {
+                                        Label("Delete", systemImage: "trash")
+                                    }
+                                    .tint(.red)
+                                }
+                                .swipeActions(edge: .leading) {
+                                    Button {
+                                        shareWalkSnapshot(walk: walk)
+                                    } label: {
+                                        Label("Share", systemImage: "square.and.arrow.up")
+                                    }
+                                }
+                            }
+                        }
                     }
-                    .swipeActions(edge: .trailing) {
-                      Button(role: .destructive) {
-                        walkToDelete = walk
-                        showDeleteConfirmation = true
-                      } label: {
-                        Label("Delete", systemImage: "trash")
-                      }
-                      .tint(.red)
-                    }
-                    .swipeActions(edge: .leading) {
-                      Button {
-                        shareWalkSnapshot(walk: walk)
-                      } label: {
-                        Label("Share", systemImage: "square.and.arrow.up")
-                      }
-                    }
-                  }
+                } else {
+                    Text("No walks yet!")
                 }
-              }
-            } else {
-              Text("No walks yet!")
             }
-          }
-          .navigationTitle("Walk History")
-      }
-      .alert("Are you sure?", isPresented: $showDeleteConfirmation, presenting: walkToDelete) { walk in
-          Button("Delete", role: .destructive) {
-              deleteWalk(walk)
-          }
-          Button("Cancel", role: .cancel) { }
-      } message: { walk in
-          Text("This action cannot be undone.")
-      }
-      .onAppear {
-          walkHistory = loadSavedWalks()
-      }
-  }
-
-    private func deleteWalk(_ walk: WalkData) {
-        walkHistory.removeAll { $0.id == walk.id }
-        saveWalks(walkHistory)
+            .navigationTitle("Walk History")
+        }
+        .alert("Are you sure?", isPresented: $showDeleteConfirmation, presenting: walkToDelete) { walk in
+            Button("Delete", role: .destructive) {
+                deleteWalk(walk)
+            }
+            Button("Cancel", role: .cancel) { }
+        } message: { _ in
+            Text("This action cannot be undone.")
+        }
     }
 
-  private func saveWalks(_ walks: [WalkData]) {
-      if let encoded = try? JSONEncoder().encode(walks) {
-          // Save to main app's UserDefaults
-          UserDefaults.standard.set(encoded, forKey: "walkHistory")
+    private func deleteWalk(_ walk: WalkData) {
+        modelContext.delete(walk)
+        do {
+            try modelContext.save()
+            // Optional: update widget after deleting
+            WidgetCenter.shared.reloadAllTimelines()
+        } catch {
+            print("Failed to delete walk: \(error)")
+        }
+    }
 
-          // Save the latest walk to App Group for widget access
-          if let latest = walks.sorted(by: { $0.date > $1.date }).first,
-             let latestEncoded = try? JSONEncoder().encode(latest),
-             let sharedDefaults = UserDefaults(suiteName: "group.com.matanyah.WalkTracker") {
-              sharedDefaults.set(latestEncoded, forKey: "latestWalk")
-              sharedDefaults.synchronize()
+    func createMapSnapshotForWidget(walk: WalkData, completion: @escaping (UIImage?) -> Void) {
+        guard !walk.route.isEmpty else {
+            completion(nil)
+            return
+        }
 
-              // Generate and save map snapshot for widget
-              createMapSnapshotForWidget(walk: latest) { image in
-                  if let image = image,
-                     let imageData = image.jpegData(compressionQuality: 0.8) {
-                      sharedDefaults.set(imageData, forKey: "latestWalkMapImage")
-                      sharedDefaults.synchronize()
+        let options = MKMapSnapshotter.Options()
+        let coordinates = walk.route.map { CLLocationCoordinate2D(latitude: $0.latitude, longitude: $0.longitude) }
 
-                      // Refresh widgets to show new data
-                      #if os(iOS)
-                      WidgetCenter.shared.reloadAllTimelines()
-                      #endif
-                  }
-              }
-          }
-      }
-  }
+        var rect = MKMapRect.null
+        for coord in coordinates {
+            let point = MKMapPoint(coord)
+            rect = rect.union(MKMapRect(x: point.x, y: point.y, width: 0, height: 0))
+        }
 
-  func createMapSnapshotForWidget(walk: WalkData, completion: @escaping (UIImage?) -> Void) {
-      guard !walk.route.isEmpty else {
-          completion(nil)
-          return
-      }
+        let padding = 0.2
+        let widthPadding = rect.size.width * padding
+        let heightPadding = rect.size.height * padding
+        rect = rect.insetBy(dx: -widthPadding, dy: -heightPadding)
 
-      let options = MKMapSnapshotter.Options()
-      let coordinates = walk.route.map { CLLocationCoordinate2D(latitude: $0.latitude, longitude: $0.longitude) }
+        options.region = MKCoordinateRegion(rect)
+        options.size = CGSize(width: 400, height: 400)
+        options.mapType = .standard
+        options.showsBuildings = true
 
-      // Calculate the region that fits the route
-      var rect = MKMapRect.null
-      for coord in coordinates {
-          let point = MKMapPoint(coord)
-          rect = rect.union(MKMapRect(x: point.x, y: point.y, width: 0, height: 0))
-      }
+        let snapshotter = MKMapSnapshotter(options: options)
+        snapshotter.start { snapshot, error in
+            guard let snapshot = snapshot, error == nil else {
+                completion(nil)
+                return
+            }
 
-      // Add padding
-      let padding = 0.2 // 20% padding
-      let widthPadding = rect.size.width * padding
-      let heightPadding = rect.size.height * padding
-      rect = rect.insetBy(dx: -widthPadding, dy: -heightPadding)
+            UIGraphicsBeginImageContextWithOptions(snapshot.image.size, true, snapshot.image.scale)
+            snapshot.image.draw(at: .zero)
 
-      options.region = MKCoordinateRegion(rect)
-      options.size = CGSize(width: 400, height: 400) // Larger size for better quality
-      options.mapType = .standard
-      options.showsBuildings = true
+            if let context = UIGraphicsGetCurrentContext() {
+                context.setLineWidth(5)
+                context.setStrokeColor(UIColor.systemBlue.cgColor)
+                context.setLineCap(.round)
+                context.setLineJoin(.round)
 
-      let snapshotter = MKMapSnapshotter(options: options)
-      snapshotter.start { snapshot, error in
-          guard let snapshot = snapshot, error == nil else {
-              completion(nil)
-              return
-          }
+                let path = UIBezierPath()
+                var firstPoint = true
 
-          // Draw the route on the snapshot
-          UIGraphicsBeginImageContextWithOptions(snapshot.image.size, true, snapshot.image.scale)
-          snapshot.image.draw(at: .zero)
+                for coordinate in coordinates {
+                    let point = snapshot.point(for: coordinate)
 
-          if let context = UIGraphicsGetCurrentContext() {
-              context.setLineWidth(5)
-              context.setStrokeColor(UIColor.systemBlue.cgColor)
-              context.setLineCap(.round)
-              context.setLineJoin(.round)
+                    if firstPoint {
+                        path.move(to: point)
+                        firstPoint = false
+                    } else {
+                        path.addLine(to: point)
+                    }
+                }
 
-              let path = UIBezierPath()
-              var firstPoint = true
+                path.stroke()
+            }
 
-              for coordinate in coordinates {
-                  let point = snapshot.point(for: coordinate)
+            let finalImage = UIGraphicsGetImageFromCurrentImageContext()
+            UIGraphicsEndImageContext()
 
-                  if firstPoint {
-                      path.move(to: point)
-                      firstPoint = false
-                  } else {
-                      path.addLine(to: point)
-                  }
-              }
+            completion(finalImage)
+        }
+    }
 
-              path.stroke()
-          }
-
-          let finalImage = UIGraphicsGetImageFromCurrentImageContext()
-          UIGraphicsEndImageContext()
-
-          completion(finalImage)
-      }
-  }
-  
     private func formattedDisplayDate(from isoDate: String) -> String {
         let formatter = DateFormatter()
         formatter.dateFormat = "yyyy-MM-dd"
@@ -194,14 +168,6 @@ struct WalkHistoryView: View {
         }
         return isoDate
     }
-}
-
-private func loadSavedWalks() -> [WalkData] {
-    if let savedData = UserDefaults.standard.data(forKey: "walkHistory"),
-       let walkHistory = try? JSONDecoder().decode([WalkData].self, from: savedData) {
-        return walkHistory
-    }
-    return []
 }
 
 struct WalkDetailView: View {
@@ -410,7 +376,9 @@ struct WalkDetailView: View {
 }
 */
 #Preview {
-   var walkHistory: [WalkData] = loadSavedWalks()
+  @Previewable @Environment(\.modelContext) var modelContext
+
+  @Previewable @Query(sort: \WalkData.date, order: .reverse) var walkHistory: [WalkData]
    @State var isViewReady = false
 
    var groupedWalks: [(String, [WalkData])] {

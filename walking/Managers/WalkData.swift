@@ -4,8 +4,10 @@
 //
 //  Created by ‏מתניה ‏אליהו on 20/05/2024.
 //
+
 import Foundation
 import CoreLocation
+import SwiftData
 
 extension WalkData {
     var formattedDuration: String {
@@ -14,6 +16,27 @@ extension WalkData {
         formatter.allowedUnits = duration >= 3600 ? [.hour, .minute] : [.minute, .second]
         return formatter.string(from: duration) ?? "0m"
     }
+}
+
+extension WalkData: Codable {
+  enum CodingKeys: String, CodingKey {
+    case id, date, startTime, endTime, steps, distance, maxSpeed, elevationGain, elevationLoss, route
+  }
+
+  public func encode(to encoder: Encoder) throws {
+    var container = encoder.container(keyedBy: CodingKeys.self)
+
+    try container.encode(id, forKey: .id)
+    try container.encode(date, forKey: .date)
+    try container.encode(startTime, forKey: .startTime)
+    try container.encode(endTime, forKey: .endTime)
+    try container.encode(steps, forKey: .steps)
+    try container.encode(distance, forKey: .distance)
+    try container.encode(maxSpeed, forKey: .maxSpeed)
+    try container.encode(elevationGain, forKey: .elevationGain)
+    try container.encode(elevationLoss, forKey: .elevationLoss)
+    try container.encode(route, forKey: .route) // Use computed property
+  }
 }
 
 extension WalkData {
@@ -26,20 +49,35 @@ extension WalkData {
     }
 }
 
-struct WalkData: Codable, Identifiable {
-    let id: UUID
+@Model
+final class WalkData {
+    @Attribute(.unique) var id: UUID
     var date: Date
-    let startTime: Date
-    let endTime: Date
-    let steps: Int
-    let distance: Double
-    let maxSpeed: Double
-    let elevationGain: Double
-    let elevationLoss: Double
-    let route: [CLLocationCoordinate2D]
-    
+    var startTime: Date
+    var endTime: Date
+    var steps: Int
+    var distance: Double
+    var maxSpeed: Double
+    var elevationGain: Double
+    var elevationLoss: Double
+    @Attribute(.externalStorage) var routeData: Data
+
     var duration: TimeInterval {
         return endTime.timeIntervalSince(startTime)
+    }
+
+    // Computed property to get route coordinates
+    var route: [CLLocationCoordinate2D] {
+        get {
+            guard let coordinates = try? JSONDecoder().decode([CLLocationCoordinate2D].self, from: routeData) else {
+                return []
+            }
+            return coordinates
+        }
+        set {
+            guard let data = try? JSONEncoder().encode(newValue) else { return }
+            routeData = data
+        }
     }
 
     init(date: Date, startTime: Date, endTime: Date, steps: Int, distance: Double, maxSpeed: Double, elevationGain: Double, elevationLoss: Double, route: [CLLocationCoordinate2D]) {
@@ -52,42 +90,46 @@ struct WalkData: Codable, Identifiable {
         self.maxSpeed = maxSpeed
         self.elevationGain = elevationGain
         self.elevationLoss = elevationLoss
-        self.route = route
+
+        // Encode route to Data
+        if let data = try? JSONEncoder().encode(route) {
+            self.routeData = data
+        } else {
+            self.routeData = Data()
+        }
     }
 
-    private enum CodingKeys: String, CodingKey {
-        case id, date, startTime, endTime, steps, distance, maxSpeed, elevationGain, elevationLoss, route
-    }
+  required convenience init(from decoder: Decoder) throws {
+      let container = try decoder.container(keyedBy: CodingKeys.self)
 
-    init(from decoder: Decoder) throws {
-        let container = try decoder.container(keyedBy: CodingKeys.self)
-        id = try container.decode(UUID.self, forKey: .id)
-        date = try container.decode(Date.self, forKey: .date)
-        startTime = try container.decode(Date.self, forKey: .startTime)
-        endTime = try container.decode(Date.self, forKey: .endTime)
-        steps = try container.decode(Int.self, forKey: .steps)
-        distance = try container.decode(Double.self, forKey: .distance)
-        maxSpeed = try container.decode(Double.self, forKey: .maxSpeed)
-        elevationGain = try container.decode(Double.self, forKey: .elevationGain)
-        elevationLoss = try container.decode(Double.self, forKey: .elevationLoss)
-        route = try container.decode([CLLocationCoordinate2D].self, forKey: .route)
-    }
+      let id = try container.decode(UUID.self, forKey: .id)
+      let date = try container.decode(Date.self, forKey: .date)
+      let startTime = try container.decode(Date.self, forKey: .startTime)
+      let endTime = try container.decode(Date.self, forKey: .endTime)
+      let steps = try container.decode(Int.self, forKey: .steps)
+      let distance = try container.decode(Double.self, forKey: .distance)
+      let maxSpeed = try container.decode(Double.self, forKey: .maxSpeed)
+      let elevationGain = try container.decode(Double.self, forKey: .elevationGain)
+      let elevationLoss = try container.decode(Double.self, forKey: .elevationLoss)
+      let route = try container.decode([CLLocationCoordinate2D].self, forKey: .route)
 
-    func encode(to encoder: Encoder) throws {
-        var container = encoder.container(keyedBy: CodingKeys.self)
-        try container.encode(id, forKey: .id)
-        try container.encode(date, forKey: .date)
-        try container.encode(startTime, forKey: .startTime)
-        try container.encode(endTime, forKey: .endTime)
-        try container.encode(steps, forKey: .steps)
-        try container.encode(distance, forKey: .distance)
-        try container.encode(maxSpeed, forKey: .maxSpeed)
-        try container.encode(elevationGain, forKey: .elevationGain)
-        try container.encode(elevationLoss, forKey: .elevationLoss)
-        try container.encode(route, forKey: .route)
-    }
+      self.init(
+          date: date,
+          startTime: startTime,
+          endTime: endTime,
+          steps: steps,
+          distance: distance,
+          maxSpeed: maxSpeed,
+          elevationGain: elevationGain,
+          elevationLoss: elevationLoss,
+          route: route
+      )
+
+      self.id = id
+  }
 }
 
+// Keep the CLLocationCoordinate2D Codable extension for encoding/decoding
 extension CLLocationCoordinate2D: Codable {
     public init(from decoder: Decoder) throws {
         var container = try decoder.unkeyedContainer()

@@ -6,6 +6,7 @@
 //
 
 import SwiftUI
+import SwiftData
 
 struct WalkDay: Identifiable {
     let id = UUID()
@@ -17,20 +18,21 @@ struct WalkDay: Identifiable {
 
 struct MonthlyWalkView: View {
     let weekDays = ["Sun", "Mon", "Tue", "Wed", "Thu", "Fri", "Sat"]
-    @State private var walkHistory: [WalkData] = []
     @AppStorage("goalTarget", store: UserDefaults(suiteName: "group.com.matanyah.WalkTracker")) var goalTarget: Int = 5000
 
     @State private var contributions: [[WalkDay]] = []
     @State private var selectedDate: Date = Date()
+    @State private var walkHistory: [WalkData] = []
+
+    // Inject the model context for SwiftData
+    @Environment(\.modelContext) private var modelContext
 
     var body: some View {
         VStack(alignment: .leading, spacing: 8) {
-            // Month/Year header with arrows
-                Text(monthYearTitle)
-                    .font(.title2)
-                    .fontWeight(.semibold)
+            Text(monthYearTitle)
+                .font(.title2)
+                .fontWeight(.semibold)
 
-            // Weekday headers
             HStack(spacing: 22) {
                 ForEach(weekDays, id: \.self) { day in
                     Text(" \(day)")
@@ -39,8 +41,7 @@ struct MonthlyWalkView: View {
                 }
             }
 
-            // Calendar grid
-          VStack(alignment: .leading, spacing: 10) {
+            VStack(alignment: .leading, spacing: 10) {
                 ForEach(Array(contributions.enumerated()), id: \.offset) { _, week in
                     HStack(spacing: 10) {
                         ForEach(week, id: \.date) { day in
@@ -63,14 +64,14 @@ struct MonthlyWalkView: View {
             }
         }
         .padding()
-        .onAppear {
-            loadWalkHistory()
+        .task {
+            await loadWalkHistory()
             generateMonthlyContributions()
         }
-        .onChange(of: goalTarget) {
+        .onChange(of: goalTarget) { _ in
             generateMonthlyContributions()
         }
-        .onChange(of: selectedDate) {
+        .onChange(of: selectedDate) { _ in
             generateMonthlyContributions()
         }
     }
@@ -82,58 +83,69 @@ struct MonthlyWalkView: View {
         return formatter.string(from: selectedDate)
     }
 
-    private var isCurrentMonth: Bool {
-        Calendar.current.isDate(selectedDate, equalTo: Date(), toGranularity: .month)
-    }
-
     // MARK: - Helpers
     private func changeMonth(by offset: Int) {
-        if let newDate = Calendar.current.date(byAdding: .month, value: offset, to: selectedDate) {
-            // Don't go into the future
-            if newDate <= Date() {
-                selectedDate = newDate
+        if let newDate = Calendar.current.date(byAdding: .month, value: offset, to: selectedDate), newDate <= Date() {
+            selectedDate = newDate
+        }
+    }
+
+    // Async fetch from SwiftData model
+    private func loadWalkHistory() async {
+        do {
+            let walks: [WalkData] = try await modelContext.fetch(FetchDescriptor<WalkData>(sortBy: [SortDescriptor(\.date, order: .forward)]))
+            walkHistory = walks.map { walk in
+                WalkData(
+                    date: walk.date,
+                    startTime: walk.startTime,
+                    endTime: walk.endTime,
+                    steps: Int(walk.steps),
+                    distance: walk.distance,
+                    maxSpeed: walk.maxSpeed,
+                    elevationGain: walk.elevationGain,
+                    elevationLoss: walk.elevationLoss,
+                    route: walk.route // Assuming route is stored as [CLLocationCoordinate2D] or convertible
+                )
             }
+        } catch {
+            print("Failed to fetch walks from SwiftData: \(error)")
+            walkHistory = []
         }
     }
 
-    private func loadWalkHistory() {
-        if let savedData = UserDefaults.standard.data(forKey: "walkHistory"),
-           let history = try? JSONDecoder().decode([WalkData].self, from: savedData) {
-            walkHistory = history
+    private func generateMonthlyContributions() {
+        var calendar = Calendar.current
+        calendar.firstWeekday = 1 // Sunday
+
+        guard let startOfMonth = calendar.dateInterval(of: .month, for: selectedDate)?.start,
+              let endOfMonth = calendar.dateInterval(of: .month, for: selectedDate)?.end else {
+            contributions = []
+            return
         }
+
+        var weeks: [[WalkDay]] = []
+        var currentWeek: [WalkDay] = []
+
+        var currentDate = startOfMonth
+        while currentDate < endOfMonth {
+            let walkDay = createWalkDay(for: currentDate)
+            currentWeek.append(walkDay)
+
+            if currentWeek.count == 7 {
+                weeks.append(currentWeek)
+                currentWeek = []
+            }
+
+            guard let nextDate = calendar.date(byAdding: .day, value: 1, to: currentDate) else { break }
+            currentDate = nextDate
+        }
+
+        if !currentWeek.isEmpty {
+            weeks.append(currentWeek)
+        }
+
+        contributions = weeks
     }
-
-  private func generateMonthlyContributions() {
-      var calendar = Calendar.current
-      calendar.firstWeekday = 1 // Sunday
-
-      let startOfMonth = calendar.dateInterval(of: .month, for: selectedDate)?.start ?? selectedDate
-      let endOfMonth = calendar.dateInterval(of: .month, for: selectedDate)?.end ?? selectedDate
-
-      var weeks: [[WalkDay]] = []
-      var currentWeek: [WalkDay] = []
-
-      var currentDate = startOfMonth
-
-      while currentDate < endOfMonth {
-          let walkDay = createWalkDay(for: currentDate)
-          currentWeek.append(walkDay)
-
-          if currentWeek.count == 7 {
-              weeks.append(currentWeek)
-              currentWeek = []
-          }
-
-          currentDate = calendar.date(byAdding: .day, value: 1, to: currentDate) ?? currentDate
-      }
-
-      // Add the last week if it has remaining days
-      if !currentWeek.isEmpty {
-          weeks.append(currentWeek)
-      }
-
-      contributions = weeks
-  }
 
     private func createWalkDay(for date: Date) -> WalkDay {
         let calendar = Calendar.current
@@ -170,77 +182,74 @@ struct MonthlyWalkView: View {
 }
 
 struct YearlyWalkView: View {
-    @State private var walkHistory: [WalkData] = []
+  @Query(sort: \WalkData.date, order: .forward) private var walkHistory: [WalkData]  // SwiftData entity query
+
     @AppStorage("goalTarget", store: UserDefaults(suiteName: "group.com.matanyah.WalkTracker")) var goalTarget: Int = 5000
 
-    // Year's contributions organized by month
     @State private var contributions: [[WalkDay]] = []
 
-  var body: some View {
-    VStack(alignment: .leading, spacing: 12) {
-      // Header
-      Text("Walk Activity - \(currentYear)")
-        .font(.title2)
-        .fontWeight(.semibold)
-        .padding(.horizontal)
+    var body: some View {
+        VStack(alignment: .leading, spacing: 12) {
+            // Header
+            Text("Walk Activity - \(currentYear)")
+                .font(.title2)
+                .fontWeight(.semibold)
+                .padding(.horizontal)
 
-      // Month labels
-      HStack(alignment: .top, spacing: 3) {
-        ForEach(0..<12, id: \.self) { monthIndex in
-          VStack(spacing: 2) {
-            Text(monthName(for: monthIndex))
-              .font(.caption2)
-              .foregroundColor(.secondary)
-              .frame(width: 25)
-          }
-        }
-      }
-      .padding(.horizontal)
-
-      // Calendar grid
-      HStack(alignment: .top, spacing: 3) {
-        ForEach(0..<12, id: \.self) { monthIndex in
-          if monthIndex < contributions.count {
-            VStack(spacing: 3) {
-              ForEach(0..<contributions[monthIndex].count, id: \.self) { dayIndex in
-                let day = contributions[monthIndex][dayIndex]
-                Rectangle()
-                  .fill(color(for: day.goalRatio))
-                  .frame(width: 25, height: 17)
-                  .cornerRadius(2)
-                /*
-                 .onTapGesture {
-                    print("Tapped: \(formattedDate(day.date)), Distance: \(day.totalDistance)m, Walks: \(day.walkCount)")
-                  }
-                 */
-                  .overlay{
-                    if day.goalRatio > 0 {
-                      Text("\(day.walkCount)")
-                        .font(.caption)
-                        .foregroundColor(day.goalRatio > 0.3 ? .white : .gray)
-                        .bold()
+            // Month labels
+            HStack(alignment: .top, spacing: 3) {
+                ForEach(0..<12, id: \.self) { monthIndex in
+                    VStack(spacing: 2) {
+                        Text(monthName(for: monthIndex))
+                            .font(.caption2)
+                            .foregroundColor(.secondary)
+                            .frame(width: 25)
                     }
-                  }
-              }
+                }
             }
-          }
-        }
-      }
-      .padding(.horizontal)
+            .padding(.horizontal)
 
-      // Legend
-      legendView
-        .padding(.horizontal)
+            // Calendar grid
+            HStack(alignment: .top, spacing: 3) {
+                ForEach(0..<12, id: \.self) { monthIndex in
+                    if monthIndex < contributions.count {
+                        VStack(spacing: 3) {
+                            ForEach(0..<contributions[monthIndex].count, id: \.self) { dayIndex in
+                                let day = contributions[monthIndex][dayIndex]
+                                Rectangle()
+                                    .fill(color(for: day.goalRatio))
+                                    .frame(width: 25, height: 17)
+                                    .cornerRadius(2)
+                                    .overlay {
+                                        if day.goalRatio > 0 {
+                                            Text("\(day.walkCount)")
+                                                .font(.caption)
+                                                .foregroundColor(day.goalRatio > 0.3 ? .white : .gray)
+                                                .bold()
+                                        }
+                                    }
+                            }
+                        }
+                    }
+                }
+            }
+            .padding(.horizontal)
+
+            // Legend
+            legendView
+                .padding(.horizontal)
+        }
+        .padding(.bottom, 60.0)
+        .onAppear {
+            generateYearlyContributions()
+        }
+        .onChange(of: goalTarget) { _ in
+            generateYearlyContributions()
+        }
+        .onChange(of: walkHistory) { _ in
+            generateYearlyContributions()
+        }
     }
-    .padding(.bottom, 60.0)
-    .onAppear {
-      loadWalkHistory()
-      generateYearlyContributions()
-    }
-    .onChange(of: goalTarget) {
-      generateYearlyContributions()
-    }
-  }
 
     private var currentYear: String {
         let formatter = DateFormatter()
@@ -292,13 +301,6 @@ struct YearlyWalkView: View {
         return formatter.string(from: date)
     }
 
-    private func loadWalkHistory() {
-        if let savedData = UserDefaults.standard.data(forKey: "walkHistory"),
-           let history = try? JSONDecoder().decode([WalkData].self, from: savedData) {
-            walkHistory = history
-        }
-    }
-
     private func generateYearlyContributions() {
         var calendar = Calendar.current
         var data: [[WalkDay]] = []
@@ -307,7 +309,7 @@ struct YearlyWalkView: View {
         for month in 1...12 {
             var monthData: [WalkDay] = []
             let daysInMonth = calendar.range(of: .day, in: .month,
-                                           for: calendar.date(from: DateComponents(year: currentYear, month: month, day: 1))!)!.count
+                                            for: calendar.date(from: DateComponents(year: currentYear, month: month, day: 1))!)!.count
 
             for day in 1...daysInMonth {
                 let date = calendar.date(from: DateComponents(year: currentYear, month: month, day: day))!
