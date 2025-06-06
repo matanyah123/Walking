@@ -7,6 +7,7 @@
 	objects = {
 
 /* Begin PBXBuildFile section */
+		98005C5F2DF222C100B70424 /* LazyPager in Frameworks */ = {isa = PBXBuildFile; productRef = 98005C5E2DF222C100B70424 /* LazyPager */; };
 		98B8A0B12DD5565D00BDAD4A /* WidgetKit.framework in Frameworks */ = {isa = PBXBuildFile; fileRef = 98AC26682D2DE58E00049868 /* WidgetKit.framework */; };
 		98B8A0B22DD5565D00BDAD4A /* SwiftUI.framework in Frameworks */ = {isa = PBXBuildFile; fileRef = 98AC266A2D2DE58E00049868 /* SwiftUI.framework */; };
 		98B8A0C12DD5565F00BDAD4A /* LastRouteWidgetExtension.appex in Embed Foundation Extensions */ = {isa = PBXBuildFile; fileRef = 98B8A0B02DD5565D00BDAD4A /* LastRouteWidgetExtension.appex */; settings = {ATTRIBUTES = (RemoveHeadersOnCopy, ); }; };
@@ -127,6 +128,7 @@
 			isa = PBXFrameworksBuildPhase;
 			buildActionMask = 2147483647;
 			files = (
+				98005C5F2DF222C100B70424 /* LazyPager in Frameworks */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};
@@ -344,6 +346,9 @@
 				Base,
 			);
 			mainGroup = 98D10E282BFB7C82009918EF;
+			packageReferences = (
+				98005C5D2DF2211800B70424 /* XCLocalSwiftPackageReference "../../../../Downloads/SwiftUI-LazyPager-master" */,
+			);
 			productRefGroup = 98D10E322BFB7C82009918EF /* Products */;
 			projectDirPath = "";
 			projectRoot = "";
@@ -651,7 +656,7 @@
 				INFOPLIST_KEY_NSLocationWhenInUseUsageDescription = "We need your location to track your walks.";
 				INFOPLIST_KEY_NSMotionUsageDescription = "We need access to your motion data to track your steps.";
 				INFOPLIST_KEY_NSPhotoLibraryAddUsageDescription = "We need to save your photos to your library.";
-				INFOPLIST_KEY_NSPhotoLibraryUsageDescription = "We need access to your photo library to let you pick images.";
+				INFOPLIST_KEY_NSPhotoLibraryUsageDescription = "We need your permission to access your photos for loading walk images.";
 				INFOPLIST_KEY_NSSupportsLiveActivities = YES;
 				INFOPLIST_KEY_UIApplicationSceneManifest_Generation = YES;
 				INFOPLIST_KEY_UIApplicationSupportsIndirectInputEvents = YES;
@@ -697,7 +702,7 @@
 				INFOPLIST_KEY_NSLocationWhenInUseUsageDescription = "We need your location to track your walks.";
 				INFOPLIST_KEY_NSMotionUsageDescription = "We need access to your motion data to track your steps.";
 				INFOPLIST_KEY_NSPhotoLibraryAddUsageDescription = "We need to save your photos to your library.";
-				INFOPLIST_KEY_NSPhotoLibraryUsageDescription = "We need access to your photo library to let you pick images.";
+				INFOPLIST_KEY_NSPhotoLibraryUsageDescription = "We need your permission to access your photos for loading walk images.";
 				INFOPLIST_KEY_NSSupportsLiveActivities = YES;
 				INFOPLIST_KEY_UIApplicationSceneManifest_Generation = YES;
 				INFOPLIST_KEY_UIApplicationSupportsIndirectInputEvents = YES;
@@ -838,6 +843,21 @@
 			defaultConfigurationName = Release;
 		};
 /* End XCConfigurationList section */
+
+/* Begin XCLocalSwiftPackageReference section */
+		98005C5D2DF2211800B70424 /* XCLocalSwiftPackageReference "../../../../Downloads/SwiftUI-LazyPager-master" */ = {
+			isa = XCLocalSwiftPackageReference;
+			relativePath = "../../../../Downloads/SwiftUI-LazyPager-master";
+		};
+/* End XCLocalSwiftPackageReference section */
+
+/* Begin XCSwiftPackageProductDependency section */
+		98005C5E2DF222C100B70424 /* LazyPager */ = {
+			isa = XCSwiftPackageProductDependency;
+			package = 98005C5D2DF2211800B70424 /* XCLocalSwiftPackageReference "../../../../Downloads/SwiftUI-LazyPager-master" */;
+			productName = LazyPager;
+		};
+/* End XCSwiftPackageProductDependency section */
 	};
 	rootObject = 98D10E292BFB7C82009918EF /* Project object */;
 }

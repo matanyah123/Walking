@@ -16,7 +16,7 @@ struct WalkActivityView: View {
 
   // Get the last 7 walks sorted by date (most recent first)
   private var recentWalks: [WalkData] {
-      Array(walkHistory.sorted { $0.date > $1.date }.prefix(7))
+      Array(walkHistory.sorted { $0.date > $1.date }.prefix(3))
   }
 
   // Group the recent walks by date, same logic as WalkHistoryView
@@ -54,19 +54,19 @@ struct WalkActivityView: View {
                         Text("\(walk.distance, specifier: "%.2f") \(unit ? "meters" : "miles")")
                           .font(.body)
                           .fontWeight(.medium)
-
+                        
                         HStack {
                           Text("Steps: \(walk.steps)")
                             .font(.caption)
                             .foregroundColor(.secondary)
-
+                          
                           Spacer()
-
+                          
                           Text(formattedTime(walk.startTime))
                             .font(.caption)
                             .foregroundColor(.secondary)
                         }
-
+                        
                         if walk.duration > 0 {
                           Text("Duration: \(formattedDuration(walk.duration))")
                             .font(.caption2)
@@ -75,6 +75,22 @@ struct WalkActivityView: View {
                       }
                     }
                     .padding(.vertical, 6)
+                  }
+                  .swipeActions(edge: .trailing) {
+                    Button(role: .destructive) {
+                      walkToDelete = walk
+                      showDeleteConfirmation = true
+                    } label: {
+                      Label("Delete", systemImage: "trash").tint(.red)
+                    }
+                    .tint(.red)
+                  }
+                  .swipeActions(edge: .leading) {
+                    Button {
+                      shareWalkSnapshot(walk: walk)
+                    } label: {
+                      Label("Share", systemImage: "square.and.arrow.up")
+                    }
                   }
                 }
               }
@@ -87,8 +103,27 @@ struct WalkActivityView: View {
             )
           }
         }
+        .alert("Are you sure?", isPresented: $showDeleteConfirmation, presenting: walkToDelete) { walk in
+            Button("Delete", role: .destructive) {
+                deleteWalk(walk)
+            }
+            Button("Cancel", role: .cancel) { }
+        } message: { _ in
+            Text("This action cannot be undone.")
+        }
       }.navigationTitle("Your Activity")
     }
+  }
+
+  private func deleteWalk(_ walk: WalkData) {
+      modelContext.delete(walk)
+      do {
+          try modelContext.save()
+          // Optional: update widget after deleting
+          WidgetCenter.shared.reloadAllTimelines()
+      } catch {
+          print("Failed to delete walk: \(error)")
+      }
   }
 
   private func formattedDisplayDate(from isoDate: String) -> String {

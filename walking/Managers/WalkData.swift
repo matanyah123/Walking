@@ -52,12 +52,14 @@ extension WalkData {
 @Model
 final class WalkData {
     @Attribute(.unique) var id: UUID
+    @Attribute(.externalStorage)
     var date: Date
     var startTime: Date
     var endTime: Date
     var steps: Int
     var distance: Double
     var maxSpeed: Double
+    var walkImagesData: Data = Data()
     var elevationGain: Double
     var elevationLoss: Double
     @Attribute(.externalStorage) var routeData: Data
@@ -80,24 +82,51 @@ final class WalkData {
         }
     }
 
-    init(date: Date, startTime: Date, endTime: Date, steps: Int, distance: Double, maxSpeed: Double, elevationGain: Double, elevationLoss: Double, route: [CLLocationCoordinate2D]) {
-        self.id = UUID()
-        self.date = date
-        self.startTime = startTime
-        self.endTime = endTime
-        self.steps = steps
-        self.distance = distance
-        self.maxSpeed = maxSpeed
-        self.elevationGain = elevationGain
-        self.elevationLoss = elevationLoss
+  var walkImages: [WalkImage] {
+      get {
+          (try? JSONDecoder().decode([WalkImage].self, from: walkImagesData)) ?? []
+      }
+      set {
+          if let encoded = try? JSONEncoder().encode(newValue) {
+              walkImagesData = encoded
+          }
+      }
+  }
 
-        // Encode route to Data
-        if let data = try? JSONEncoder().encode(route) {
-            self.routeData = data
-        } else {
-            self.routeData = Data()
-        }
-    }
+  init(
+      date: Date,
+      startTime: Date,
+      endTime: Date,
+      steps: Int,
+      distance: Double,
+      maxSpeed: Double,
+      elevationGain: Double,
+      elevationLoss: Double,
+      route: [CLLocationCoordinate2D],
+      walkImages: [WalkImage] = []
+  ) {
+      self.id = UUID()
+      self.date = date
+      self.startTime = startTime
+      self.endTime = endTime
+      self.steps = steps
+      self.distance = distance
+      self.maxSpeed = maxSpeed
+      self.elevationGain = elevationGain
+      self.elevationLoss = elevationLoss
+
+      if let data = try? JSONEncoder().encode(route) {
+          self.routeData = data
+      } else {
+          self.routeData = Data()
+      }
+
+      if let imageData = try? JSONEncoder().encode(walkImages) {
+          self.walkImagesData = imageData
+      } else {
+          self.walkImagesData = Data()
+      }
+  }
 
   required convenience init(from decoder: Decoder) throws {
       let container = try decoder.container(keyedBy: CodingKeys.self)
@@ -143,4 +172,41 @@ extension CLLocationCoordinate2D: Codable {
         try container.encode(latitude)
         try container.encode(longitude)
     }
+}
+
+extension WalkData {
+    static var dummy: WalkData {
+        let now = Date()
+        let startTime = Calendar.current.date(byAdding: .minute, value: -45, to: now)!
+        let center = CLLocationCoordinate2D(latitude: 31.7683, longitude: 35.2137)
+        let route = generateHeartRoute(center: center, radius: 0.0005)
+
+        return WalkData(
+            date: now,
+            startTime: startTime,
+            endTime: now,
+            steps: 3200,
+            distance: 3500.0,
+            maxSpeed: 2.5,
+            elevationGain: 30,
+            elevationLoss: 25,
+            route: route
+        )
+    }
+}
+func generateHeartRoute(center: CLLocationCoordinate2D, radius: Double = 0.0003, resolution: Int = 300) -> [CLLocationCoordinate2D] {
+    let points = stride(from: 0.0, through: 2 * Double.pi, by: 2 * Double.pi / Double(resolution)).map { t -> CLLocationCoordinate2D in
+        let x = 16 * pow(sin(t), 3)
+        let y = 13 * cos(t) - 5 * cos(2 * t) - 2 * cos(3 * t) - cos(4 * t)
+
+        // Normalize to [-1, 1] range
+        let normX = x / 18.0
+        let normY = y / 17.0
+
+        let lat = center.latitude + normY * radius
+        let lon = center.longitude + normX * radius
+        return CLLocationCoordinate2D(latitude: lat, longitude: lon)
+    }
+
+    return points
 }

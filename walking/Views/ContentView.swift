@@ -17,13 +17,14 @@ enum Tab {
 
 class ContentViewModel: ObservableObject {
   @Published var isKeyboardVisible = false
+  @Published var selectedDetent: PresentationDetent = .medium
   @Published var selectedTab: Tab = .home
   @Published var isStatsBarOpen = false
   @Published var trackingMode: Int = 0
+  @Published var isCameraOpen = false
   @Published var offset: CGFloat = 0
   @Published var tracking = false
   @Published var started = false
-  @Published var isCameraOpen = false
   @Published var goal: Double? {
     didSet {
       if let goal = goal {
@@ -55,6 +56,7 @@ struct ContentView: View {
   @StateObject private var locationManager = LocationManager()
   @StateObject private var motionManager = MotionManager()
   @StateObject var liveActivityManager = LiveActivityManager()
+  @StateObject private var cameraModel = CameraModel()
 
   var progress: Double {
     guard let goal = viewModel.goal, goal > 0 else { return 0 }
@@ -69,7 +71,7 @@ struct ContentView: View {
       Group {
         mainTabView()
       }
-      EdgeBlur(direction: .bottom, opacity: height/100).frame(height: height).transition(.opacity)
+      EdgeBlur(direction: .bottom, opacity: height/75).frame(height: height).transition(.opacity)
       CustomBottomBar(
         started: $viewModel.started,
         tracking: $viewModel.tracking,
@@ -79,11 +81,12 @@ struct ContentView: View {
         selectedTab: $viewModel.selectedTab,
         locationManager: locationManager,
         motionManager: motionManager,
-        liveActivityManager: liveActivityManager,
+        liveActivityManager: liveActivityManager, cameraModel: cameraModel,
         trackingMode: $viewModel.trackingMode,
         deepLink: $deepLink
       )
       .padding(.bottom)
+      InAppBanner()
     }
     .ignoresSafeArea(.container)
     .onReceive(NotificationCenter.default.publisher(for: UIResponder.keyboardWillShowNotification)) { notification in
@@ -116,6 +119,7 @@ struct ContentView: View {
     }
     .onAppear {
       // MARK: - viewModel.isPaymentWallShown = true
+      WidgetCenter.shared.reloadAllTimelines()
     }
     .sheet(isPresented: $viewModel.isPaymentWallShown){
       PaymentWall()
@@ -147,7 +151,6 @@ struct ContentView: View {
       .colorScheme(viewModel.darkMode ? .dark : .light)
       .ignoresSafeArea()
       .onTapGesture {
-
         UIApplication.shared.dismissKeyboard()
         withAnimation(.easeIn(duration: 0.09)) {
           viewModel.isStatsBarOpen = false
@@ -192,13 +195,23 @@ struct ContentView: View {
             Spacer()
           }
           .padding(.top)
-          .sheet(isPresented: $viewModel.isCameraOpen) {
-            CameraView()
-              .presentationDetents([.medium ,.large])
-              .presentationDragIndicator(.visible)
-          }
         }
         Spacer()
+      }
+      .sheet(isPresented: $viewModel.isCameraOpen) {
+        CameraView(
+          cameraModel: cameraModel,
+          darkMode: viewModel.darkMode,
+          selectedDetent: $viewModel.selectedDetent
+        )
+        .presentationDetents(cameraModel.capturedPhotos.isEmpty ? [.medium] : [.medium ,.large], selection: $viewModel.selectedDetent)
+        .presentationDragIndicator(cameraModel.capturedPhotos.isEmpty ? .hidden : .visible)
+      }
+      .onChange(of: viewModel.started) { _, newValue in
+        if newValue {
+          // Clear photos when starting a new walk
+          cameraModel.clearPhotos()
+        }
       }
       .padding()
     }

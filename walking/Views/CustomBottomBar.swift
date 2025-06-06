@@ -22,6 +22,7 @@ struct CustomBottomBar: View {
   @ObservedObject var locationManager: LocationManager
   @ObservedObject var motionManager: MotionManager
   @ObservedObject var liveActivityManager: LiveActivityManager
+  @ObservedObject var cameraModel: CameraModel
   @Environment(\.modelContext) private var modelContext
   @Query var savedWalks: [WalkData]
   @State private var timer: Timer? = nil
@@ -354,47 +355,52 @@ struct CustomBottomBar: View {
   }
 
   private func finishTracking() {
-    locationManager.stopTracking()
-    motionManager.stopTracking()
-    saveData()
-    locationManager.clearData()
-    motionManager.clearData()
-    WidgetCenter.shared.reloadAllTimelines()
-    Task {
-      stopUpdating()
-      await liveActivityManager.endLiveActivity()
-    }
-  }
-
-  private func saveData() {
-    guard let startTime = locationManager.startTime, let endTime = locationManager.endTime else {
-      return
+      InAppNotificationManager.shared.show(message: "Walk has been saved.\nYou can view it in the app history.\nGood job!")
+      locationManager.stopTracking()
+      motionManager.stopTracking()
+      saveData()
+      locationManager.clearData()
+      motionManager.clearData()
+      WidgetCenter.shared.reloadAllTimelines()
+      Task {
+        stopUpdating()
+        await liveActivityManager.endLiveActivity()
+      }
     }
 
-    let newWalk = WalkData(
-      date: Date(),
-      startTime: startTime,
-      endTime: endTime,
-      steps: motionManager.stepCount,
-      distance: locationManager.distance,
-      maxSpeed: locationManager.maxSpeed,
-      elevationGain: locationManager.elevationGain,
-      elevationLoss: locationManager.elevationLoss,
-      route: locationManager.route.map { $0.coordinate }
-    )
+    private func saveData() {
+      guard let startTime = locationManager.startTime, let endTime = locationManager.endTime else {
+        return
+      }
 
-    // ✅ SwiftData: Save to persistent model context
-    modelContext.insert(newWalk)
-    do {
-      try modelContext.save()
-      print("✅ Walk saved with SwiftData")
-    } catch {
-      print("❌ Error saving walk: \(error)")
+      let newWalk = WalkData(
+        date: Date(),
+        startTime: startTime,
+        endTime: endTime,
+        steps: motionManager.stepCount,
+        distance: locationManager.distance,
+        maxSpeed: locationManager.maxSpeed,
+        elevationGain: locationManager.elevationGain,
+        elevationLoss: locationManager.elevationLoss,
+        route: locationManager.route.map { $0.coordinate },
+        walkImages: cameraModel.capturedPhotos // Include captured photos
+      )
+
+      // ✅ SwiftData: Save to persistent model context
+      modelContext.insert(newWalk)
+      do {
+        try modelContext.save()
+        print("✅ Walk saved with SwiftData and \(cameraModel.capturedPhotos.count) photos")
+      } catch {
+        print("❌ Error saving walk: \(error)")
+      }
+
+      // ✅ Still save the latest walk for the widget
+      saveWalkForWidget(walk: newWalk)
+
+      // Clear the photos after saving
+      cameraModel.clearPhotos()
     }
-
-    // ✅ Still save the latest walk for the widget
-    saveWalkForWidget(walk: newWalk)
-  }
 
   // This function is referenced but not implemented in the original code
   private func saveWalkForWidget(walk: WalkData) {
