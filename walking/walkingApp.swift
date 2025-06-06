@@ -23,7 +23,7 @@ struct walkingApp: App {
           if url.scheme == "walking", url.host == "start" {            deepLink = "group.com.matanyah.walking.start"
           }
         }
-    }.modelContainer(for: WalkData.self)
+    }.modelContainer(SharedDataContainer.shared.container)
   }
 }
 

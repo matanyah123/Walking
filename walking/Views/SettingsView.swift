@@ -180,7 +180,6 @@ struct SettingsView: View {
                 Text("Current unit: \(unit ? "KM" : "MI")")
             }
         }
-
         // Additional Settings Section
         Section(
             header: Text("Additional Settings"),

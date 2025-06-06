@@ -16,7 +16,8 @@ struct WalkEntry: TimelineEntry {
   let goalTarget: Int
 }
 
-struct WalkProvider: TimelineProvider {
+@MainActor
+struct WalkProvider: @preconcurrency TimelineProvider {
     func placeholder(in context: Context) -> WalkEntry {
       WalkEntry(date: Date(), walk: nil, goalTarget: 5000)
     }
@@ -33,22 +34,15 @@ struct WalkProvider: TimelineProvider {
     }
 
   private func loadEntry() -> WalkEntry {
-      guard let sharedDefaults = UserDefaults(suiteName: "group.com.matanyah.WalkTracker") else {
-          return WalkEntry(date: Date(), walk: nil, goalTarget: 5000)
-      }
-
-      let walk = loadLatestWalk(from: sharedDefaults)
-      let goal = fetchGoalTarget() // 👈 this line is what was missing!
+      let walk = loadLatestWalk()
+      let goal = fetchGoalTarget()
       return WalkEntry(date: Date(), walk: walk, goalTarget: goal)
   }
 
-    private func loadLatestWalk(from sharedDefaults: UserDefaults) -> WalkData? {
-        guard let data = sharedDefaults.data(forKey: "latestWalk"),
-              let walk = try? JSONDecoder().decode(WalkData.self, from: data) else {
-            return nil
-        }
-        return walk
-    }
+  private func loadLatestWalk() -> WalkData? {
+      let container = SharedDataContainer.shared
+      return container.fetchRecentWalks(limit: 1).first
+  }
   private func fetchGoalTarget() -> Int {
     let defaults = UserDefaults(suiteName: "group.com.matanyah.WalkTracker")
     let override = defaults?.object(forKey: SharedKeys.currentGoalOverride) as? Double
