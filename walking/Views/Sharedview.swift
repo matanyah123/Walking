@@ -9,50 +9,50 @@ import CoreLocation
 
 @MainActor
 func shareWalkSnapshot(walk: WalkData) {
-    // Create a temporary view controller to host our map
-    let mapSnapshotView = UIHostingController(
-        rootView: Sharedview(walk: walk, isViewReady: .constant(true))
-    )
+  // Create a temporary view controller to host our map
+  let mapSnapshotView = UIHostingController(
+    rootView: Sharedview(walk: walk, isViewReady: .constant(true))
+  )
 
-    // Size it appropriately
-    mapSnapshotView.view.frame = UIScreen.main.bounds
+  // Size it appropriately
+  mapSnapshotView.view.frame = UIScreen.main.bounds
 
-    // Add it to the view hierarchy temporarily (but don't show it)
-    if let windowScene = UIApplication.shared.connectedScenes.first as? UIWindowScene,
-       let window = windowScene.windows.first {
-        window.addSubview(mapSnapshotView.view)
+  // Add it to the view hierarchy temporarily (but don't show it)
+  if let windowScene = UIApplication.shared.connectedScenes.first as? UIWindowScene,
+     let window = windowScene.windows.first {
+    window.addSubview(mapSnapshotView.view)
 
-        // Give the map time to load - MapKit needs this
-        DispatchQueue.main.asyncAfter(deadline: .now() + 1.5) {
-            // Now capture the fully loaded view
-            let renderer = UIGraphicsImageRenderer(size: mapSnapshotView.view.bounds.size)
-            let screenshot = renderer.image { _ in
-                mapSnapshotView.view.drawHierarchy(in: mapSnapshotView.view.bounds, afterScreenUpdates: true)
-            }
+    // Give the map time to load - MapKit needs this
+    DispatchQueue.main.asyncAfter(deadline: .now() + 1.5) {
+      // Now capture the fully loaded view
+      let renderer = UIGraphicsImageRenderer(size: mapSnapshotView.view.bounds.size)
+      let screenshot = renderer.image { _ in
+        mapSnapshotView.view.drawHierarchy(in: mapSnapshotView.view.bounds, afterScreenUpdates: true)
+      }
 
-            // Remove our temporary view
-            mapSnapshotView.view.removeFromSuperview()
+      // Remove our temporary view
+      mapSnapshotView.view.removeFromSuperview()
 
-            // Share the screenshot
-            let activityVC = UIActivityViewController(activityItems: [screenshot], applicationActivities: nil)
+      // Share the screenshot
+      let activityVC = UIActivityViewController(activityItems: [screenshot], applicationActivities: nil)
 
-            if let rootVC = windowScene.windows.first?.rootViewController {
-                // If rootVC is presenting something, use the presented controller
-                let presentingVC = rootVC.presentedViewController ?? rootVC
+      if let rootVC = windowScene.windows.first?.rootViewController {
+        // If rootVC is presenting something, use the presented controller
+        let presentingVC = rootVC.presentedViewController ?? rootVC
 
-                // On iPad, set the popover presentation controller
-                if let popover = activityVC.popoverPresentationController {
-                    popover.sourceView = presentingVC.view
-                    popover.sourceRect = CGRect(x: presentingVC.view.bounds.midX,
-                                             y: presentingVC.view.bounds.midY,
-                                             width: 0, height: 0)
-                    popover.permittedArrowDirections = []
-                }
-
-                presentingVC.present(activityVC, animated: true)
-            }
+        // On iPad, set the popover presentation controller
+        if let popover = activityVC.popoverPresentationController {
+          popover.sourceView = presentingVC.view
+          popover.sourceRect = CGRect(x: presentingVC.view.bounds.midX,
+                                      y: presentingVC.view.bounds.midY,
+                                      width: 0, height: 0)
+          popover.permittedArrowDirections = []
         }
+
+        presentingVC.present(activityVC, animated: true)
+      }
     }
+  }
 }
 
 struct Sharedview: View {
@@ -60,11 +60,14 @@ struct Sharedview: View {
   @State private var isMiniMapOpen = false
   @Binding var isViewReady: Bool // Use a binding to track view readiness
   @State private var trackingMode: Int = 0
+  @State private var showImageSheet = false
+  @State private var selectedImage: WalkImage?
+
   @AppStorage("darkMode", store: UserDefaults(suiteName: "group.com.matanyah.WalkTracker")) var darkMode: Bool = true
   @AppStorage("unit", store: UserDefaults(suiteName: "group.com.matanyah.WalkTracker")) var unit: Bool = true
   var body: some View {
     ZStack {
-      MapView(route: walk.route.map { CLLocation(latitude: $0.latitude, longitude: $0.longitude) }, showUserLocation: false, trackingMode: $trackingMode)
+      MapView(route: walk.route.map { CLLocation(latitude: $0.latitude, longitude: $0.longitude) }, showUserLocation: false, trackingMode: $trackingMode, showImageSheet: $showImageSheet, selectedImage: $selectedImage)
         .ignoresSafeArea(.all)
       BlurView(style: darkMode ? .systemUltraThinMaterialDark : .systemThinMaterialLight).ignoresSafeArea(.all)
       VStack(alignment: .leading) {
@@ -115,7 +118,7 @@ struct Sharedview: View {
         }
         .padding(.leading)
 
-        MapView(route: walk.route.map { CLLocation(latitude: $0.latitude, longitude: $0.longitude) }, showUserLocation: false, trackingMode: $trackingMode)
+        MapView(route: walk.route.map { CLLocation(latitude: $0.latitude, longitude: $0.longitude) }, showUserLocation: false, trackingMode: $trackingMode, showImageSheet: $showImageSheet, selectedImage: $selectedImage)
           .innerShadow(radius: 20)
           .onAppear {
             // Simulate loading; add custom logic if needed
@@ -154,23 +157,23 @@ struct Sharedview: View {
     formatter.unitsStyle = .abbreviated
     formatter.allowedUnits = walk.duration >= 3600 ? [.hour, .minute] : [.minute, .second]
     return formatter.string(from: walk.duration) ?? "0m"
-}
+  }
 }
 
 struct WalkCard<Content: View>: View {
-    let content: Content
-
-    init(@ViewBuilder content: () -> Content) {
-        self.content = content()
+  let content: Content
+  
+  init(@ViewBuilder content: () -> Content) {
+    self.content = content()
+  }
+  
+  var body: some View {
+    VStack {
+      content
     }
-
-    var body: some View {
-        VStack {
-            content
-        }
-        .padding()
-        .background(.ultraThinMaterial)
-        .cornerRadius(20)
-        .shadow(radius: 4)
-    }
+    .padding()
+    .background(.ultraThinMaterial)
+    .cornerRadius(20)
+    .shadow(radius: 4)
+  }
 }

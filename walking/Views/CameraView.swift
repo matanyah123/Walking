@@ -118,7 +118,7 @@ struct PhotoView: View {
   let localIdentifier: String
   @State private var uiImage: UIImage? = nil
   @ObservedObject var cameraModel = CameraModel()
-
+  
   var body: some View {
     Group {
       if let image = uiImage {
@@ -133,7 +133,7 @@ struct PhotoView: View {
           RoundedRectangle(cornerRadius: 12)
             .fill(Color.gray.opacity(0.2))
             .frame(width: 100, height: 100)
-
+          
           ProgressView()
         }
         .onAppear {
@@ -148,7 +148,7 @@ struct PhotoView: View {
 
 #Preview {
   @Previewable @State var deepLink: String?
-  ContentView(deepLink: $deepLink)
+  ContentView()
     .preferredColorScheme(.dark)
 }
 /*

@@ -12,7 +12,7 @@ import UIKit
 import Combine
 
 enum Tab {
-    case home, walk, settings
+  case home, walk, settings
 }
 
 class ContentViewModel: ObservableObject {
@@ -22,12 +22,13 @@ class ContentViewModel: ObservableObject {
   @Published var selectedTab: Tab = .home
   @Published var isStatsBarOpen = false
   @Published var trackingMode: Int = 0
-  @Published var isCameraOpen = false
   @Published var offset: CGFloat = 0
   @Published var tracking = false
   @Published var started = false
   @Published var isLastOneGlows = false
   @Published var isSearchActive = false
+  @Published var showImageSheet = false
+  @Published var selectedImage: WalkImage?
   @Published var goal: Double? {
     didSet {
       if let goal = goal {
@@ -39,27 +40,26 @@ class ContentViewModel: ObservableObject {
     }
   }
   @Published var isPaymentWallShown: Bool = false
-
+  
   init() {
     // Load the session override if it exists, otherwise fall back to default
     let override = UserDefaults.shared.object(forKey: SharedKeys.currentGoalOverride) as? Double
     self.goal = override
   }
-
+  
   @AppStorage("doYouNeedAGoal") var doYouNeedAGoal: Bool = false
   @AppStorage("darkMode", store: UserDefaults(suiteName: "group.com.matanyah.WalkTracker")) var darkMode: Bool = true
-
+  
   @AppStorage(SharedKeys.currentGoalOverride, store: .shared)var goalTarget: Int = 5000
 }
 
 struct ContentView: View {
-  //@Environment(\.modelContext) private var modelContext
-  @Binding var deepLink: String?
   @StateObject private var viewModel = ContentViewModel.shared
   @StateObject private var locationManager = LocationManager()
   @StateObject private var motionManager = MotionManager()
   @StateObject var liveActivityManager = LiveActivityManager()
   @StateObject private var cameraModel = CameraModel()
+  @StateObject private var liveActions = LiveActions.shared
 
   var progress: Double {
     guard let goal = viewModel.goal, goal > 0 else { return 0 }
@@ -85,8 +85,7 @@ struct ContentView: View {
         locationManager: locationManager,
         motionManager: motionManager,
         liveActivityManager: liveActivityManager, cameraModel: cameraModel,
-        trackingMode: $viewModel.trackingMode,
-        deepLink: $deepLink
+        trackingMode: $viewModel.trackingMode
       )
       .padding(.bottom)
       InAppBanner()
@@ -150,7 +149,7 @@ struct ContentView: View {
     ZStack {
       MapView(route: locationManager.route,
               currentLocation: locationManager.currentLocation,
-              showUserLocation: true, trackingMode: $viewModel.trackingMode)
+              showUserLocation: true, trackingMode: $viewModel.trackingMode, showImageSheet: $viewModel.showImageSheet, selectedImage: $viewModel.selectedImage)
       .colorScheme(viewModel.darkMode ? .dark : .light)
       .ignoresSafeArea()
       .onTapGesture {
@@ -187,7 +186,7 @@ struct ContentView: View {
           HStack{
             Button{
               withAnimation(.easeInOut(duration: 0.09)) {
-                viewModel.isCameraOpen.toggle()
+                liveActions.openCamera = true
               }
             }label: {
               Image(systemName: "camera.fill")
@@ -201,7 +200,7 @@ struct ContentView: View {
         }
         Spacer()
       }
-      .sheet(isPresented: $viewModel.isCameraOpen) {
+      .sheet(isPresented: $liveActions.openCamera) {
         CameraView(
           cameraModel: cameraModel,
           darkMode: viewModel.darkMode,
@@ -226,8 +225,7 @@ struct ContentView: View {
 // MARK: - Preview
 
 #Preview {
-  @Previewable @State var deepLink: String?
-  ContentView(deepLink: $deepLink)
+  ContentView()
     .preferredColorScheme(.dark)
 }
 

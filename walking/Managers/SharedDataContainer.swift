@@ -44,52 +44,52 @@ class SharedDataContainer {
 
 // MARK: - Data Access Methods
 extension SharedDataContainer {
+  
+  func fetchRecentWalks(limit: Int = 10) -> [WalkData] {
+    var descriptor = FetchDescriptor<WalkData>(
+      sortBy: [SortDescriptor(\.date, order: .reverse)]
+    )
+    descriptor.fetchLimit = limit
     
-    func fetchRecentWalks(limit: Int = 10) -> [WalkData] {
-      var descriptor = FetchDescriptor<WalkData>(
-            sortBy: [SortDescriptor(\.date, order: .reverse)]
-        )
-        descriptor.fetchLimit = limit
-        
-        do {
-            return try context.fetch(descriptor)
-        } catch {
-            print("Failed to fetch recent walks: \(error)")
-            return []
-        }
+    do {
+      return try context.fetch(descriptor)
+    } catch {
+      print("Failed to fetch recent walks: \(error)")
+      return []
+    }
+  }
+  
+  func fetchWalkData(for date: Date) -> [WalkData] {
+    let calendar = Calendar.current
+    let startOfDay = calendar.startOfDay(for: date)
+    let endOfDay = calendar.date(byAdding: .day, value: 1, to: startOfDay)!
+    
+    let predicate = #Predicate<WalkData> { walk in
+      walk.date >= startOfDay && walk.date < endOfDay
     }
     
-    func fetchWalkData(for date: Date) -> [WalkData] {
-        let calendar = Calendar.current
-        let startOfDay = calendar.startOfDay(for: date)
-        let endOfDay = calendar.date(byAdding: .day, value: 1, to: startOfDay)!
-        
-        let predicate = #Predicate<WalkData> { walk in
-            walk.date >= startOfDay && walk.date < endOfDay
-        }
-        
-        let descriptor = FetchDescriptor<WalkData>(
-            predicate: predicate,
-            sortBy: [SortDescriptor(\.startTime, order: .forward)]
-        )
-        
-        do {
-            return try context.fetch(descriptor)
-        } catch {
-            print("Failed to fetch walks for date: \(error)")
-            return []
-        }
-    }
+    let descriptor = FetchDescriptor<WalkData>(
+      predicate: predicate,
+      sortBy: [SortDescriptor(\.startTime, order: .forward)]
+    )
     
-    func getTotalStepsToday() -> Int {
-        let today = Date()
-        let walks = fetchWalkData(for: today)
-        return walks.reduce(0) { $0 + $1.steps }
+    do {
+      return try context.fetch(descriptor)
+    } catch {
+      print("Failed to fetch walks for date: \(error)")
+      return []
     }
-    
-    func getTotalDistanceToday() -> Double {
-        let today = Date()
-        let walks = fetchWalkData(for: today)
-        return walks.reduce(0) { $0 + $1.distance }
-    }
+  }
+  
+  func getTotalStepsToday() -> Int {
+    let today = Date()
+    let walks = fetchWalkData(for: today)
+    return walks.reduce(0) { $0 + $1.steps }
+  }
+  
+  func getTotalDistanceToday() -> Double {
+    let today = Date()
+    let walks = fetchWalkData(for: today)
+    return walks.reduce(0) { $0 + $1.distance }
+  }
 }

@@ -7,14 +7,14 @@
 import SwiftUI
 
 struct BlurView: UIViewRepresentable {
-    let style: UIBlurEffect.Style
-
-    func makeUIView(context: Context) -> UIVisualEffectView {
-        let view = UIVisualEffectView(effect: UIBlurEffect(style: style))
-        return view
-    }
-
-    func updateUIView(_ uiView: UIVisualEffectView, context: Context) {}
+  let style: UIBlurEffect.Style
+  
+  func makeUIView(context: Context) -> UIVisualEffectView {
+    let view = UIVisualEffectView(effect: UIBlurEffect(style: style))
+    return view
+  }
+  
+  func updateUIView(_ uiView: UIVisualEffectView, context: Context) {}
 }
 
 struct InnerShadowModifierGeneral: ViewModifier {
@@ -39,45 +39,45 @@ extension View {
 }
 
 struct ChromaticAberrationModifier: ViewModifier {
-    let radius: CGFloat
-    let offset: CGFloat
+  let radius: CGFloat
+  let offset: CGFloat
 
-    func body(content: Content) -> some View {
-        ZStack {
-            aberratedLayer(content: content)
-                .mask(radialMask()) // Soft fade toward center
-            content // Original layer on top for sharpness
-        }
-        .compositingGroup()
-        .blendMode(.screen)
+  func body(content: Content) -> some View {
+    ZStack {
+      aberratedLayer(content: content)
+        .mask(radialMask()) // Soft fade toward center
+      content // Original layer on top for sharpness
     }
+    .compositingGroup()
+    .blendMode(.screen)
+  }
 
-    private func aberratedLayer(content: Content) -> some View {
-        ZStack {
-            content
-                .foregroundColor(.red)
-                .blur(radius: radius)
-                .offset(x: -offset)
-            content
-                .foregroundColor(.green)
-                .blur(radius: radius)
-                .offset(x: offset)
-            content
-                .foregroundColor(.blue)
-                .blur(radius: radius)
-        }
+  private func aberratedLayer(content: Content) -> some View {
+    ZStack {
+      content
+        .foregroundColor(.red)
+        .blur(radius: radius)
+        .offset(x: -offset)
+      content
+        .foregroundColor(.green)
+        .blur(radius: radius)
+        .offset(x: offset)
+      content
+        .foregroundColor(.blue)
+        .blur(radius: radius)
     }
+  }
 
-    private func radialMask() -> some View {
-        RadialGradient(
-            gradient: Gradient(colors: [.black, .clear]),
-            center: .center,
-            startRadius: 10,
-            endRadius: 200
-        )
-        .scaleEffect(1.5)
-        .edgesIgnoringSafeArea(.all)
-    }
+  private func radialMask() -> some View {
+    RadialGradient(
+      gradient: Gradient(colors: [.black, .clear]),
+      center: .center,
+      startRadius: 10,
+      endRadius: 200
+    )
+    .scaleEffect(1.5)
+    .edgesIgnoringSafeArea(.all)
+  }
 }
 
 extension View {
@@ -104,9 +104,9 @@ extension View {
       .offset(x: 300, y: -100)
       .foregroundColor(.pink)
     BlurView(style: .systemMaterialDark)
-    .frame(width: 300, height: 700)
-    .cornerRadius(50)
-    .innerShadow(radius: 50)
+      .frame(width: 300, height: 700)
+      .cornerRadius(50)
+      .innerShadow(radius: 50)
     VStack{
       Text("SwiftUI Chromatic ✨")
         .font(.system(size: 26, weight: .bold))

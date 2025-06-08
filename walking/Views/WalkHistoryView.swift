@@ -15,237 +15,237 @@ import Photos
 import UIKit
 
 struct WalkHistoryView: View {
-    @Environment(\.modelContext) private var modelContext
+  @Environment(\.modelContext) private var modelContext
 
-    @Query(sort: \WalkData.date, order: .reverse) private var walkHistory: [WalkData]
+  @Query(sort: \WalkData.date, order: .reverse) private var walkHistory: [WalkData]
 
-    private var groupedWalks: [(String, [WalkData])] {
-        let formatter = DateFormatter()
-        formatter.dateFormat = "yyyy-MM-dd"
+  private var groupedWalks: [(String, [WalkData])] {
+    let formatter = DateFormatter()
+    formatter.dateFormat = "yyyy-MM-dd"
 
-        let grouped = Dictionary(grouping: walkHistory) { walk in
-            formatter.string(from: walk.date)
-        }
-        return grouped.sorted { $0.key > $1.key }
+    let grouped = Dictionary(grouping: walkHistory) { walk in
+      formatter.string(from: walk.date)
     }
+    return grouped.sorted { $0.key > $1.key }
+  }
 
-    @State private var showDeleteConfirmation = false
-    @State private var walkToDelete: WalkData?
-    @State private var selectedWalkForEditing: WalkData?
-    @State private var editingName = ""
+  @State private var showDeleteConfirmation = false
+  @State private var walkToDelete: WalkData?
+  @State private var selectedWalkForEditing: WalkData?
+  @State private var editingName = ""
 
-    @AppStorage("unit", store: UserDefaults(suiteName: "group.com.matanyah.WalkTracker")) var unit: Bool = true
+  @AppStorage("unit", store: UserDefaults(suiteName: "group.com.matanyah.WalkTracker")) var unit: Bool = true
 
-    var body: some View {
-        NavigationStack {
-            List {
-                if !groupedWalks.isEmpty {
-                    ForEach(groupedWalks, id: \.0) { date, walks in
-                        Section(header: Text(formattedDisplayDate(from: date)).font(.headline)) {
-                            ForEach(walks) { walk in
-                                NavigationLink(destination: WalkDetailView(walk: walk)) {
-                                    VStack(alignment: .leading, spacing: 4) {
-                                        // Display walk name or fallback to default format
-                                        Text(displayName(for: walk))
-                                            .font(.body)
-                                            .fontWeight(.medium)
+  var body: some View {
+    NavigationStack {
+      List {
+        if !groupedWalks.isEmpty {
+          ForEach(groupedWalks, id: \.0) { date, walks in
+            Section(header: Text(formattedDisplayDate(from: date)).font(.headline)) {
+              ForEach(walks) { walk in
+                NavigationLink(destination: WalkDetailView(walk: walk)) {
+                  VStack(alignment: .leading, spacing: 4) {
+                    // Display walk name or fallback to default format
+                    Text(displayName(for: walk))
+                      .font(.body)
+                      .fontWeight(.medium)
 
-                                        // Always show distance and steps as secondary info
-                                        Text("\(walk.distance, specifier: "%.2f") \(unit ? "meters" : "miles") • \(walk.steps) steps")
-                                            .font(.caption)
-                                            .foregroundColor(.secondary)
+                    // Always show distance and steps as secondary info
+                    Text("\(walk.distance, specifier: "%.2f") \(unit ? "meters" : "miles") • \(walk.steps) steps")
+                      .font(.caption)
+                      .foregroundColor(.secondary)
 
-                                        // Show duration as well
-                                        Text(walk.formattedDuration)
-                                            .font(.caption2)
-                                            .foregroundColor(.secondary)
-                                    }
-                                    .padding(.vertical, 6)
-                                }
-                                .swipeActions(edge: .trailing) {
-                                    Button(role: .destructive) {
-                                        walkToDelete = walk
-                                        showDeleteConfirmation = true
-                                    } label: {
-                                        Label("Delete", systemImage: "trash").tint(.red)
-                                    }
-                                    .tint(.red)
-                                }
-                                .swipeActions(edge: .leading) {
-                                  Button {
-                                      selectedWalkForEditing = walk
-                                      editingName = walk.name ?? ""
-                                  } label: {
-                                      Label("Edit", systemImage: "pencil")
-                                  }.tint(.orange)
-                                    Button {
-                                        shareWalkSnapshot(walk: walk)
-                                    } label: {
-                                        Label("Share", systemImage: "square.and.arrow.up")
-                                    }
-                                }
-                            }
-                        }
-                    }
-                } else {
-                    Text("No walks yet!")
-                        .foregroundColor(.secondary)
-                        .font(.body)
-                        .padding()
+                    // Show duration as well
+                    Text(walk.formattedDuration)
+                      .font(.caption2)
+                      .foregroundColor(.secondary)
+                  }
+                  .padding(.vertical, 6)
                 }
-            }
-            .navigationTitle("Walk History")
-            .safeAreaInset(edge: .bottom) {
-              Color.clear.frame(height: 80)
-            }
-        }
-        .alert("Are you sure?", isPresented: $showDeleteConfirmation, presenting: walkToDelete) { walk in
-            Button("Delete", role: .destructive) {
-                deleteWalk(walk)
-                UIImpactFeedbackGenerator(style: .light).impactOccurred()
-            }
-            Button("Cancel", role: .cancel) { }
-        } message: { _ in
-            Text("This action cannot be undone.")
-        }
-        .sheet(item: $selectedWalkForEditing) { walk in
-            NavigationView {
-                VStack(spacing: 20) {
-                    Text("Edit Walk Name")
-                        .font(.title2)
-                        .fontWeight(.semibold)
-
-                    TextField("Enter a name", text: $editingName)
-                        .textFieldStyle(RoundedBorderTextFieldStyle())
-                        .padding(.horizontal)
-
-                    Spacer()
+                .swipeActions(edge: .trailing) {
+                  Button(role: .destructive) {
+                    walkToDelete = walk
+                    showDeleteConfirmation = true
+                  } label: {
+                    Label("Delete", systemImage: "trash").tint(.red)
+                  }
+                  .tint(.red)
                 }
-                .padding()
-                .navigationBarTitleDisplayMode(.inline)
-                .toolbar {
-                    ToolbarItem(placement: .navigationBarLeading) {
-                        Button("Cancel") {
-                            selectedWalkForEditing = nil
-                        }
-                    }
-                    ToolbarItem(placement: .navigationBarTrailing) {
-                        Button("Save") {
-                            saveWalkName(walk: walk, newName: editingName)
-                            selectedWalkForEditing = nil
-                        }
-                    }
+                .swipeActions(edge: .leading) {
+                  Button {
+                    shareWalkSnapshot(walk: walk)
+                  } label: {
+                    Label("Share", systemImage: "square.and.arrow.up")
+                  }
+                  Button {
+                    selectedWalkForEditing = walk
+                    editingName = walk.name ?? ""
+                  } label: {
+                    Label("Edit", systemImage: "pencil")
+                  }.tint(.orange)
                 }
+              }
             }
+          }
+        } else {
+          Text("No walks yet!")
+            .foregroundColor(.secondary)
+            .font(.body)
+            .padding()
         }
+      }
+      .navigationTitle("Walk History")
+      .safeAreaInset(edge: .bottom) {
+        Color.clear.frame(height: 80)
+      }
     }
-
-    // Helper function to get display name for a walk
-    private func displayName(for walk: WalkData) -> String {
-        return walk.name ?? "Walk on \(formattedDate(walk.date))"
+    .alert("Are you sure?", isPresented: $showDeleteConfirmation, presenting: walkToDelete) { walk in
+      Button("Delete", role: .destructive) {
+        deleteWalk(walk)
+        UIImpactFeedbackGenerator(style: .light).impactOccurred()
+      }
+      Button("Cancel", role: .cancel) { }
+    } message: { _ in
+      Text("This action cannot be undone.")
     }
+    .sheet(item: $selectedWalkForEditing) { walk in
+      NavigationView {
+        VStack(spacing: 20) {
+          Text("Edit Walk Name")
+            .font(.title2)
+            .fontWeight(.semibold)
 
-    // Helper function to format date for walk names
-    private func formattedDate(_ date: Date) -> String {
-        let formatter = DateFormatter()
-        formatter.dateStyle = .medium
-        return formatter.string(from: date)
-    }
+          TextField("Enter a name", text: $editingName)
+            .textFieldStyle(RoundedBorderTextFieldStyle())
+            .padding(.horizontal)
 
-    private func deleteWalk(_ walk: WalkData) {
-        modelContext.delete(walk)
-        do {
-            try modelContext.save()
-            // Optional: update widget after deleting
-            WidgetCenter.shared.reloadAllTimelines()
-        } catch {
-            print("Failed to delete walk: \(error)")
+          Spacer()
         }
-    }
-
-    private func saveWalkName(walk: WalkData, newName: String) {
-        walk.name = newName.isEmpty ? nil : newName
-        do {
-            try modelContext.save()
-        } catch {
-            print("Failed to save walk name: \(error)")
-        }
-    }
-
-    func createMapSnapshotForWidget(walk: WalkData, completion: @escaping (UIImage?) -> Void) {
-        guard !walk.route.isEmpty else {
-            completion(nil)
-            return
-        }
-
-        let options = MKMapSnapshotter.Options()
-        let coordinates = walk.route.map { CLLocationCoordinate2D(latitude: $0.latitude, longitude: $0.longitude) }
-
-        var rect = MKMapRect.null
-        for coord in coordinates {
-            let point = MKMapPoint(coord)
-            rect = rect.union(MKMapRect(x: point.x, y: point.y, width: 0, height: 0))
-        }
-
-        let padding = 0.2
-        let widthPadding = rect.size.width * padding
-        let heightPadding = rect.size.height * padding
-        rect = rect.insetBy(dx: -widthPadding, dy: -heightPadding)
-
-        options.region = MKCoordinateRegion(rect)
-        options.size = CGSize(width: 400, height: 400)
-        options.mapType = .standard
-        options.showsBuildings = true
-
-        let snapshotter = MKMapSnapshotter(options: options)
-        snapshotter.start { snapshot, error in
-            guard let snapshot = snapshot, error == nil else {
-                completion(nil)
-                return
+        .padding()
+        .navigationBarTitleDisplayMode(.inline)
+        .toolbar {
+          ToolbarItem(placement: .navigationBarLeading) {
+            Button("Cancel") {
+              selectedWalkForEditing = nil
             }
-
-            UIGraphicsBeginImageContextWithOptions(snapshot.image.size, true, snapshot.image.scale)
-            snapshot.image.draw(at: .zero)
-
-            if let context = UIGraphicsGetCurrentContext() {
-                context.setLineWidth(5)
-                context.setStrokeColor(UIColor.systemBlue.cgColor)
-                context.setLineCap(.round)
-                context.setLineJoin(.round)
-
-                let path = UIBezierPath()
-                var firstPoint = true
-
-                for coordinate in coordinates {
-                    let point = snapshot.point(for: coordinate)
-
-                    if firstPoint {
-                        path.move(to: point)
-                        firstPoint = false
-                    } else {
-                        path.addLine(to: point)
-                    }
-                }
-
-                path.stroke()
+          }
+          ToolbarItem(placement: .navigationBarTrailing) {
+            Button("Save") {
+              saveWalkName(walk: walk, newName: editingName)
+              selectedWalkForEditing = nil
             }
-
-            let finalImage = UIGraphicsGetImageFromCurrentImageContext()
-            UIGraphicsEndImageContext()
-
-            completion(finalImage)
+          }
         }
+      }
+    }
+  }
+
+  // Helper function to get display name for a walk
+  private func displayName(for walk: WalkData) -> String {
+    return walk.name ?? "Walk on \(formattedDate(walk.date))"
+  }
+
+  // Helper function to format date for walk names
+  private func formattedDate(_ date: Date) -> String {
+    let formatter = DateFormatter()
+    formatter.dateStyle = .medium
+    return formatter.string(from: date)
+  }
+
+  private func deleteWalk(_ walk: WalkData) {
+    modelContext.delete(walk)
+    do {
+      try modelContext.save()
+      // Optional: update widget after deleting
+      WidgetCenter.shared.reloadAllTimelines()
+    } catch {
+      print("Failed to delete walk: \(error)")
+    }
+  }
+
+  private func saveWalkName(walk: WalkData, newName: String) {
+    walk.name = newName.isEmpty ? nil : newName
+    do {
+      try modelContext.save()
+    } catch {
+      print("Failed to save walk name: \(error)")
+    }
+  }
+
+  func createMapSnapshotForWidget(walk: WalkData, completion: @escaping (UIImage?) -> Void) {
+    guard !walk.route.isEmpty else {
+      completion(nil)
+      return
     }
 
-    private func formattedDisplayDate(from isoDate: String) -> String {
-        let formatter = DateFormatter()
-        formatter.dateFormat = "yyyy-MM-dd"
-        if let date = formatter.date(from: isoDate) {
-            formatter.dateStyle = .medium
-            return formatter.string(from: date)
-        }
-        return isoDate
+    let options = MKMapSnapshotter.Options()
+    let coordinates = walk.route.map { CLLocationCoordinate2D(latitude: $0.latitude, longitude: $0.longitude) }
+
+    var rect = MKMapRect.null
+    for coord in coordinates {
+      let point = MKMapPoint(coord)
+      rect = rect.union(MKMapRect(x: point.x, y: point.y, width: 0, height: 0))
     }
+
+    let padding = 0.2
+    let widthPadding = rect.size.width * padding
+    let heightPadding = rect.size.height * padding
+    rect = rect.insetBy(dx: -widthPadding, dy: -heightPadding)
+
+    options.region = MKCoordinateRegion(rect)
+    options.size = CGSize(width: 400, height: 400)
+    options.mapType = .standard
+    options.showsBuildings = true
+
+    let snapshotter = MKMapSnapshotter(options: options)
+    snapshotter.start { snapshot, error in
+      guard let snapshot = snapshot, error == nil else {
+        completion(nil)
+        return
+      }
+
+      UIGraphicsBeginImageContextWithOptions(snapshot.image.size, true, snapshot.image.scale)
+      snapshot.image.draw(at: .zero)
+
+      if let context = UIGraphicsGetCurrentContext() {
+        context.setLineWidth(5)
+        context.setStrokeColor(UIColor.systemBlue.cgColor)
+        context.setLineCap(.round)
+        context.setLineJoin(.round)
+
+        let path = UIBezierPath()
+        var firstPoint = true
+
+        for coordinate in coordinates {
+          let point = snapshot.point(for: coordinate)
+
+          if firstPoint {
+            path.move(to: point)
+            firstPoint = false
+          } else {
+            path.addLine(to: point)
+          }
+        }
+
+        path.stroke()
+      }
+
+      let finalImage = UIGraphicsGetImageFromCurrentImageContext()
+      UIGraphicsEndImageContext()
+
+      completion(finalImage)
+    }
+  }
+
+  private func formattedDisplayDate(from isoDate: String) -> String {
+    let formatter = DateFormatter()
+    formatter.dateFormat = "yyyy-MM-dd"
+    if let date = formatter.date(from: isoDate) {
+      formatter.dateStyle = .medium
+      return formatter.string(from: date)
+    }
+    return isoDate
+  }
 }
 
 struct WalkDetailView: View {
@@ -259,6 +259,8 @@ struct WalkDetailView: View {
   @State private var trackingMode: Int = 0
   @State private var isEditingName = false
   @State private var editingName: String = ""
+  @State private var showImageSheet = false
+  @State private var selectedImage: WalkImage?
   @AppStorage("darkMode", store: UserDefaults(suiteName: "group.com.matanyah.WalkTracker")) var darkMode: Bool = true
   @AppStorage("unit", store: UserDefaults(suiteName: "group.com.matanyah.WalkTracker")) var unit: Bool = true
 
@@ -298,8 +300,6 @@ struct WalkDetailView: View {
           isViewReady = false
         }
       }
-      .navigationTitle("")
-      .navigationBarTitleDisplayMode(.inline)
       .toolbar {
         ToolbarItem(placement: .principal) {
           HStack {
@@ -331,6 +331,9 @@ struct WalkDetailView: View {
           }
         }
       }
+      .safeAreaInset(edge: .bottom) {
+        Color.clear.frame(height: 80)
+      }
     }
   }
 
@@ -361,11 +364,42 @@ struct WalkDetailView: View {
 
       WalkCard {
         NavigationLink{
-          MapView(route: walk.route.map { CLLocation(latitude: $0.latitude, longitude: $0.longitude) }, showUserLocation: false, trackingMode: $trackingMode, showImages: true, images: walk.walkImages)
+          MapView(route: walk.route.map { CLLocation(latitude: $0.latitude, longitude: $0.longitude) }, showUserLocation: false, trackingMode: $trackingMode, showImages: true, images: walk.walkImages, showImageSheet: $showImageSheet, selectedImage: $selectedImage)
             .ignoresSafeArea()
             .colorScheme(darkMode ? .dark : .light)
+            .sheet(isPresented: $showImageSheet) {
+                if let selectedImage = selectedImage,
+                   let imageIndex = walk.walkImages.firstIndex(where: { $0.id == selectedImage.id }),
+                   imageIndex < loadedImages.count,
+                   loadedImages[imageIndex] != nil {
+                    PhotoPagerView(
+                        images: loadedImages.compactMap { $0 }, // Only non-nil images
+                        startIndex: loadedImages.prefix(upTo: imageIndex).compactMap { $0 }.count
+                    )
+                } else {
+                    // Fallback view when image can't be found
+                    VStack(spacing: 20) {
+                        Image(systemName: "photo")
+                            .font(.system(size: 60))
+                            .foregroundColor(.gray)
+
+                        Text("Image Not Available")
+                            .font(.title2)
+                            .foregroundColor(.secondary)
+
+                        Button("Close") {
+                            showImageSheet = false
+                            selectedImage = nil
+                        }
+                        .buttonStyle(.borderedProminent)
+                    }
+                    .frame(maxWidth: .infinity, maxHeight: .infinity)
+                    .background(Color.black)
+                    .presentationDetents([.medium])
+                }
+            }
         } label: {
-          MapView(route: walk.route.map { CLLocation(latitude: $0.latitude, longitude: $0.longitude) }, showUserLocation: false,trackingMode: $trackingMode)
+          MapView(route: walk.route.map { CLLocation(latitude: $0.latitude, longitude: $0.longitude) }, showUserLocation: false,trackingMode: $trackingMode, showImageSheet: $showImageSheet, selectedImage: $selectedImage)
             .frame(height: 200)
             .cornerRadius(15)
             .overlay(
@@ -419,47 +453,47 @@ struct WalkDetailView: View {
               UIImpactFeedbackGenerator(style: .light).impactOccurred()
             },
             onImagesAdded: { newImages in
-                // Add new images to the loaded images array first
-                loadedImages.append(contentsOf: newImages)
+              // Add new images to the loaded images array first
+              loadedImages.append(contentsOf: newImages)
 
-                // Save each image to the Photos library and create WalkImage objects
-                for image in newImages {
-                    if let imageData = image.jpegData(compressionQuality: 0.8) {
-                        PHPhotoLibrary.requestAuthorization { status in
-                            guard status == .authorized else {
-                                print("Photo library access not authorized")
-                                return
-                            }
-                            PHPhotoLibrary.shared().performChanges({
-                                let options = PHAssetResourceCreationOptions()
-                                let creationRequest = PHAssetCreationRequest.forAsset()
-                                creationRequest.addResource(with: .photo, data: imageData, options: options)
-                            }, completionHandler: { success, error in
-                                if let error = error {
-                                    print("Error saving gallery photo: \(error)")
-                                } else if success {
-                                    // Fetch the newest photo
-                                    let fetchOptions = PHFetchOptions()
-                                    fetchOptions.sortDescriptors = [NSSortDescriptor(key: "creationDate", ascending: false)]
-                                    fetchOptions.fetchLimit = 1
-                                    let result = PHAsset.fetchAssets(with: .image, options: fetchOptions)
-                                    if let asset = result.firstObject {
-                                        DispatchQueue.main.async {
-                                            let walkImage = WalkImage(
-                                                imageType: .gallery, // Keep as .gallery to distinguish from camera photos
-                                                localIdentifier: asset.localIdentifier, // This is the key fix
-                                                fileURL: nil // Don't need fileURL for Photos library images
-                                            )
-                                            walk.walkImages.append(walkImage)
-                                            // Don't call loadWalkImages() here since we already added to loadedImages
-                                            UIImpactFeedbackGenerator(style: .light).impactOccurred()
-                                        }
-                                    }
-                                }
-                            })
-                        }
+              // Save each image to the Photos library and create WalkImage objects
+              for image in newImages {
+                if let imageData = image.jpegData(compressionQuality: 0.8) {
+                  PHPhotoLibrary.requestAuthorization { status in
+                    guard status == .authorized else {
+                      print("Photo library access not authorized")
+                      return
                     }
+                    PHPhotoLibrary.shared().performChanges({
+                      let options = PHAssetResourceCreationOptions()
+                      let creationRequest = PHAssetCreationRequest.forAsset()
+                      creationRequest.addResource(with: .photo, data: imageData, options: options)
+                    }, completionHandler: { success, error in
+                      if let error = error {
+                        print("Error saving gallery photo: \(error)")
+                      } else if success {
+                        // Fetch the newest photo
+                        let fetchOptions = PHFetchOptions()
+                        fetchOptions.sortDescriptors = [NSSortDescriptor(key: "creationDate", ascending: false)]
+                        fetchOptions.fetchLimit = 1
+                        let result = PHAsset.fetchAssets(with: .image, options: fetchOptions)
+                        if let asset = result.firstObject {
+                          DispatchQueue.main.async {
+                            let walkImage = WalkImage(
+                              imageType: .gallery, // Keep as .gallery to distinguish from camera photos
+                              localIdentifier: asset.localIdentifier, // This is the key fix
+                              fileURL: nil // Don't need fileURL for Photos library images
+                            )
+                            walk.walkImages.append(walkImage)
+                            // Don't call loadWalkImages() here since we already added to loadedImages
+                            UIImpactFeedbackGenerator(style: .light).impactOccurred()
+                          }
+                        }
+                      }
+                    })
+                  }
                 }
+              }
             }
           )
         }
@@ -474,54 +508,11 @@ struct WalkDetailView: View {
           .frame(maxWidth: .infinity)
       }
       .buttonStyle(.borderedProminent)
-      .padding(2.5)
-      Spacer().frame(height: 60)
+      .padding(.horizontal, 2.5)
+      //Spacer().frame(height: 60)
     }
     .padding()
   }
-
-  /* Landscape layout
-   private var landscapeView: some View {
-   HStack(alignment: .top, spacing: 20) {
-   VStack(spacing: 20) {
-   WalkCard {
-   HStack {
-   Image(systemName: "figure.walk")
-   .font(.title)
-   VStack(alignment: .leading) {
-   Text("Distance")
-   .font(.caption)
-   .foregroundColor(.secondary)
-   Text("\(walk.distance, specifier: "%.2f") \(unit ? "me" : "mi")")
-   .font(.headline)
-   }
-   Spacer()
-   VStack(alignment: .trailing) {
-   Text("Steps")
-   .font(.caption)
-   .foregroundColor(.secondary)
-   Text("\(walk.steps)")
-   .font(.headline)
-   }
-   }
-   }
-   infoCards
-   }
-   .frame(maxWidth: .infinity)
-   WalkCard {
-   MapView(route: walk.route.map { CLLocation(latitude: $0.latitude, longitude: $0.longitude) }, showUserLocation: false, trackingMode: $trackingMode)
-   .frame(height: 270)
-   .cornerRadius(15)
-   .onTapGesture {
-   isMiniMapOpen = true
-   }
-   }
-   .frame(maxWidth: .infinity)
-   }
-   .padding()
-   .padding(.bottom, 100.0)
-   }
-   */
 
   // Common cards
   private var infoCards: some View {
@@ -651,135 +642,144 @@ struct WalkDetailView: View {
 }
 
 struct PhotoGridView: View {
-    let images: [UIImage?]
-    let onImageDelete: (Int) -> Void
-    let onImagesAdded: ([UIImage]) -> Void // New callback for adding images
+  let images: [UIImage?]
+  let onImageDelete: (Int) -> Void
+  let onImagesAdded: ([UIImage]) -> Void // New callback for adding images
 
-    @State private var selectedImage: SelectedIndex? = nil
-    @State private var selectedItems: [PhotosPickerItem] = []
-    @State private var showingPhotoPicker = false
+  @State private var selectedImage: SelectedIndex? = nil
+  @State private var selectedItems: [PhotosPickerItem] = []
+  @State private var showingPhotoPicker = false
 
-    private let columns = Array(repeating: GridItem(.flexible(), spacing: 8), count: 3)
+  private let columns = Array(repeating: GridItem(.flexible(), spacing: 8), count: 3)
 
-    var body: some View {
-      LazyVGrid(columns: columns, spacing: 8) {
-        // Existing images
-        ForEach(Array(images.enumerated()), id: \.offset) { index, image in
-          if let image = images[index] {
-            Image(uiImage: image)
-              .resizable()
-              .aspectRatio(contentMode: .fill)
-              .frame(width: 100, height: 100)
-              .clipped()
-              .cornerRadius(8)
-              .onTapGesture {
-                selectedImage = SelectedIndex(id: index)
-              }
-              .contextMenu {
-                Button(role: .destructive) {
-                  onImageDelete(index)
-                } label: {
-                  Label("Delete", systemImage: "trash")
-                    .tint(.red)
-                }
-              }
-          } else {
-            VStack(spacing: 8) {
-              Image(systemName: "photo")
-                .resizable()
-                .scaledToFit()
-                .frame(width: 50, height: 50)
-                .foregroundColor(.gray)
-
-              Text("Image missing")
-                .font(.caption)
-                .multilineTextAlignment(.center)
-                .foregroundColor(.secondary)
-            }
+  var body: some View {
+    LazyVGrid(columns: columns, spacing: 8) {
+      // Existing images
+      ForEach(Array(images.enumerated()), id: \.offset) { index, image in
+        if let image = images[index] {
+          Image(uiImage: image)
+            .resizable()
+            .aspectRatio(contentMode: .fill)
             .frame(width: 100, height: 100)
-            .background(Color.gray.opacity(0.1))
+            .clipped()
             .cornerRadius(8)
-          }
-        }
-
-        // Plus button
-        Button(action: {
-          showingPhotoPicker = true
-        }) {
-          ZStack {
-            RoundedRectangle(cornerRadius: 8)
-              .fill(Color.gray.opacity(0.2))
-              .frame(width: 100, height: 100)
-
-            Image(systemName: "plus")
-              .font(.system(size: 30, weight: .light))
+            .onTapGesture {
+              selectedImage = SelectedIndex(id: index)
+            }
+            .contextMenu {
+              Button(role: .destructive) {
+                onImageDelete(index)
+              } label: {
+                Label("Delete", systemImage: "trash")
+                  .tint(.red)
+              }
+            }
+        } else {
+          VStack(spacing: 8) {
+            Image(systemName: "photo")
+              .resizable()
+              .scaledToFit()
+              .frame(width: 50, height: 50)
               .foregroundColor(.gray)
+
+            Text("Image missing")
+              .font(.caption)
+              .multilineTextAlignment(.center)
+              .foregroundColor(.secondary)
           }
+          .frame(width: 100, height: 100)
+          .background(Color.gray.opacity(0.1))
+          .cornerRadius(8)
         }
-        .buttonStyle(PlainButtonStyle())
+      }
+
+      // Plus button
+      Button(action: {
+        showingPhotoPicker = true
+      }) {
         ZStack {
           RoundedRectangle(cornerRadius: 8)
             .fill(Color.gray.opacity(0.2))
             .frame(width: 100, height: 100)
-          Text("+ Will make a duplicate\n(for now)\ndelete the original")
-            .font(.caption)
+
+          Image(systemName: "plus")
+            .font(.system(size: 30, weight: .light))
             .foregroundColor(.gray)
-            .multilineTextAlignment(.center)
         }
       }
-        .fullScreenCover(item: $selectedImage) { selected in
-            if let selectedImage = images[selected.id] {
-                PhotoPagerView(
-                    images: images.compactMap { $0 },
-                    startIndex: images.prefix(upTo: selected.id).compactMap { $0 }.count
-                )
-            } else {
-              VStack(spacing: 8) {
-                  Image(systemName: "photo")
-                      .resizable()
-                      .scaledToFit()
-                      .foregroundColor(.gray)
-
-                  Text("Image missing")
-                  .font(.largeTitle)
-                      .multilineTextAlignment(.center)
-                      .foregroundColor(.secondary)
-              }
-              .background(Color.gray.opacity(0.1))
-              .cornerRadius(20)
-            }
-        }
-        .photosPicker(
-            isPresented: $showingPhotoPicker,
-            selection: $selectedItems,
-            maxSelectionCount: nil, // Allow unlimited selection
-            matching: .images
-        )
-        .onChange(of: selectedItems) {
-            Task {
-                var newImages: [UIImage] = []
-
-                for item in selectedItems {
-                    if let data = try? await item.loadTransferable(type: Data.self),
-                       let image = UIImage(data: data) {
-                        newImages.append(image)
-                    }
-                }
-
-                if !newImages.isEmpty {
-                    onImagesAdded(newImages)
-                }
-
-                // Clear selection for next time
-                selectedItems = []
-            }
-        }
+      .buttonStyle(PlainButtonStyle())
+      ZStack {
+        RoundedRectangle(cornerRadius: 8)
+          .fill(Color.gray.opacity(0.2))
+          .frame(width: 100, height: 100)
+        Text("+ Will make a\nduplicate\n(for now)")
+          .font(.caption)
+          .foregroundColor(.gray)
+          .multilineTextAlignment(.center)
+      }
+      ZStack {
+        RoundedRectangle(cornerRadius: 8)
+          .fill(Color.gray.opacity(0.2))
+          .frame(width: 100, height: 100)
+        Text("You will need to\ncopy location manually.")
+          .font(.caption)
+          .foregroundColor(.gray)
+          .multilineTextAlignment(.center)
+      }
     }
+    .fullScreenCover(item: $selectedImage) { selected in
+      if let selectedImage = images[selected.id] {
+        PhotoPagerView(
+          images: images.compactMap { $0 },
+          startIndex: images.prefix(upTo: selected.id).compactMap { $0 }.count
+        )
+      } else {
+        VStack(spacing: 8) {
+          Image(systemName: "photo")
+            .resizable()
+            .scaledToFit()
+            .foregroundColor(.gray)
+
+          Text("Image missing")
+            .font(.largeTitle)
+            .multilineTextAlignment(.center)
+            .foregroundColor(.secondary)
+        }
+        .background(Color.gray.opacity(0.1))
+        .cornerRadius(20)
+      }
+    }
+    .photosPicker(
+      isPresented: $showingPhotoPicker,
+      selection: $selectedItems,
+      maxSelectionCount: nil, // Allow unlimited selection
+      matching: .images
+    )
+    .onChange(of: selectedItems) {
+      Task {
+        var newImages: [UIImage] = []
+
+        for item in selectedItems {
+          if let data = try? await item.loadTransferable(type: Data.self),
+             let image = UIImage(data: data) {
+            newImages.append(image)
+          }
+        }
+
+        if !newImages.isEmpty {
+          onImagesAdded(newImages)
+        }
+
+        // Clear selection for next time
+        selectedItems = []
+      }
+    }
+  }
 }
 
 // Make sure you have this struct defined somewhere
 struct SelectedIndex: Identifiable {
-    let id: Int
+  let id: Int
 }
 
 struct PhotoPagerView: View {
@@ -824,9 +824,9 @@ struct PhotoPagerView: View {
           Spacer()
           // With this:
           ShareLink(item: Image(uiImage: images[currentPage]), preview: SharePreview("Photo")) {
-              Image(systemName: "square.and.arrow.up.circle.fill")
-                  .font(.system(size: 30))
-                  .foregroundColor(.white.opacity(0.8))
+            Image(systemName: "square.and.arrow.up.circle.fill")
+              .font(.system(size: 30))
+              .foregroundColor(.white.opacity(0.8))
           }
           Button(action: { dismiss() }) {
             Image(systemName: "xmark.circle.fill")
@@ -851,6 +851,6 @@ struct PhotoPagerView: View {
 }
 
 #Preview {
-    WalkDetailView(walk: WalkData.dummy)
-        .preferredColorScheme(.light)
+  WalkDetailView(walk: WalkData.dummy)
+    .preferredColorScheme(.light)
 }

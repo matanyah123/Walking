@@ -203,18 +203,18 @@ extension WalkData {
 }
 
 func generateHeartRoute(center: CLLocationCoordinate2D, radius: Double = 0.0003, resolution: Int = 300) -> [CLLocationCoordinate2D] {
-    let points = stride(from: 0.0, through: 2 * Double.pi, by: 2 * Double.pi / Double(resolution)).map { t -> CLLocationCoordinate2D in
-        let x = 16 * pow(sin(t), 3)
-        let y = 13 * cos(t) - 5 * cos(2 * t) - 2 * cos(3 * t) - cos(4 * t)
-
-        // Normalize to [-1, 1] range
-        let normX = x / 18.0
-        let normY = y / 17.0
-
-        let lat = center.latitude + normY * radius
-        let lon = center.longitude + normX * radius
-        return CLLocationCoordinate2D(latitude: lat, longitude: lon)
-    }
-
-    return points
+  let points = stride(from: 0.0, through: 2 * Double.pi, by: 2 * Double.pi / Double(resolution)).map { t -> CLLocationCoordinate2D in
+    let x = 16 * pow(sin(t), 3)
+    let y = 13 * cos(t) - 5 * cos(2 * t) - 2 * cos(3 * t) - cos(4 * t)
+    
+    // Normalize to [-1, 1] range
+    let normX = x / 18.0
+    let normY = y / 17.0
+    
+    let lat = center.latitude + normY * radius
+    let lon = center.longitude + normX * radius
+    return CLLocationCoordinate2D(latitude: lat, longitude: lon)
+  }
+  
+  return points
 }

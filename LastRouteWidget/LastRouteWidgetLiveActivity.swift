@@ -15,51 +15,52 @@ import ActivityKit
 struct LastRouteWidgetLiveActivity: Widget {
   var body: some WidgetConfiguration {
     ActivityConfiguration(for: LastRouteWidgetAttributes.self) { context in
-      let goal = context.attributes.currentGoalOverride
-      let unit = context.attributes.unit
+        let isWalkActive = context.state.isWalking // <-- bool from your activity content state
 
-      // Convert distance based on unit setting
-      let displayDistance = unit ? context.state.distance : context.state.distance * 3.28084 // meters to feet
-      let displayGoal = unit ? goal : goal * 3.28084
-      let unitText = unit ? "meters" : "feet"
-      let unitAbbr = unit ? "m" : "ft"
+        let goal = context.attributes.currentGoalOverride
+        let unit = context.attributes.unit
 
-      let progress = displayGoal > 0 ? min(displayDistance / displayGoal, 1.0) : 0.0
-      let percentage = progress * 100
+        let displayDistance = unit ? context.state.distance : context.state.distance * 3.28084
+        let displayGoal = unit ? goal : goal * 3.28084
+        let unitText = unit ? "meters" : "feet"
+        let unitAbbr = unit ? "m" : "ft"
 
-      HStack {
-        VStack(alignment: .leading) {
-          Text("You walked \(displayDistance, specifier: "%.1f") \(unitText) and \(context.state.steps) steps")
-            .font(.subheadline)
-            .bold()
-            .contentTransition(.numericText(value: displayDistance))
-            .foregroundStyle(Color.black.opacity(0.6))
-          if displayGoal > 0 {
-            ProgressView("You completed \(percentage, specifier: "%.1f")% of your goal", value: progress)
-              .contentTransition(.numericText(value: percentage))
-              .font(.subheadline)
-              .foregroundStyle(Color.black
-                .opacity(0.6))
-          }
+        let progress = displayGoal > 0 ? min(displayDistance / displayGoal, 1.0) : 0.0
+        let percentage = progress * 100
+
+        HStack {
+            VStack(alignment: .leading) {
+                Text("You walked \(displayDistance, specifier: "%.1f") \(unitText) and \(context.state.steps) steps")
+                    .font(.subheadline)
+                    .bold()
+                    .contentTransition(.numericText(value: displayDistance))
+                    .foregroundStyle(Color.black.opacity(0.6))
+
+                if displayGoal > 0 {
+                    ProgressView("You completed \(percentage, specifier: "%.1f")% of your goal", value: progress)
+                        .contentTransition(.numericText(value: percentage))
+                        .font(.subheadline)
+                        .foregroundStyle(Color.black.opacity(0.6))
+                }
+            }
+
+            Link(destination: URL(string: "walking://toggleWalk")!) {
+                Image(systemName: isWalkActive ? "play.circle.fill" : "pause.circle.fill")
+                .font(.title2)
+                    .bold()
+                    .foregroundStyle(Color.black.opacity(0.6))
+            }
+
+            Link(destination: URL(string: "walking://openCamera")!) {
+                Image(systemName: "camera.circle.fill")
+                .font(.title2)
+                    .bold()
+                    .foregroundStyle(Color.black.opacity(0.6))
+            }
         }
-
-        Image(systemName: "point.bottomleft.forward.to.point.topright.scurvepath")
-          .resizable()
-          .scaledToFit()
-          .frame(width: 40, height: (displayGoal > 0) ? 40 : 30)
-          .bold()
-          .foregroundStyle(Color.black.opacity(0.6))
-        /*
-         Button{
-         //.toggleTracking()
-         }label:{
-         Image(systemName: "pause.fill")
-         }
-         */
-      }
-      .padding()
-      .tint(Color.black.opacity(0.6))
-      .activityBackgroundTint(Color.accentFromSettings.opacity(0.8))
+        .padding()
+        .tint(Color.black.opacity(0.6))
+        .activityBackgroundTint(Color.accentFromSettings.opacity(0.8))
     } dynamicIsland: { context in
       DynamicIsland {
         DynamicIslandExpandedRegion(.leading) {
@@ -130,15 +131,15 @@ struct LastRouteWidgetLiveActivity: Widget {
 
 // MARK: - Preview
 extension LastRouteWidgetAttributes {
-    fileprivate static var preview: LastRouteWidgetAttributes {
-      LastRouteWidgetAttributes(name: "Matanyah's Walk", accentColor: .lavenderBlue, currentGoalOverride: 10, unit: false)
-    }
+  fileprivate static var preview: LastRouteWidgetAttributes {
+    LastRouteWidgetAttributes(name: "Matanyah's Walk", accentColor: .lavenderBlue, currentGoalOverride: 10, unit: false)
+  }
 }
 
 extension LastRouteWidgetAttributes.ContentState {
-    fileprivate static var example: LastRouteWidgetAttributes.ContentState {
-      LastRouteWidgetAttributes.ContentState(distance: 58.3, steps: 367)
-    }
+  fileprivate static var example: LastRouteWidgetAttributes.ContentState {
+    LastRouteWidgetAttributes.ContentState(distance: 58.3, steps: 367, isWalking: true)
+  }
 }
 
 #Preview("Live Activity", as: .content, using: LastRouteWidgetAttributes.preview) {
@@ -147,31 +148,32 @@ extension LastRouteWidgetAttributes.ContentState {
   LastRouteWidgetAttributes.ContentState.example
 }
 
-
+/*
 struct LastRouteWidgetLiveActivity_Previews: PreviewProvider {
-    static let attributes = LastRouteWidgetAttributes.preview
-    static let contentState = LastRouteWidgetAttributes.ContentState.example
-    static let goalCompletedState = LastRouteWidgetAttributes.ContentState.example
-
-    static var previews: some View {
-        Group {
-            // Dynamic Island States
-            attributes
-                .previewContext(contentState, viewKind: .dynamicIsland(.compact))
-                .previewDisplayName("DI Compact - In Progress")
-
-            attributes
-                .previewContext(contentState, viewKind: .dynamicIsland(.expanded))
-                .previewDisplayName("DI Expanded - In Progress")
-
-            attributes
-                .previewContext(contentState, viewKind: .dynamicIsland(.minimal))
-                .previewDisplayName("DI Minimal - In Progress")
-
-            // Goal completed state
-            attributes
-                .previewContext(goalCompletedState, viewKind: .dynamicIsland(.expanded))
-                .previewDisplayName("DI Expanded - Goal Completed")
-        }
+  static let attributes = LastRouteWidgetAttributes.preview
+  static let contentState = LastRouteWidgetAttributes.ContentState.example
+  static let goalCompletedState = LastRouteWidgetAttributes.ContentState.example
+  
+  static var previews: some View {
+    Group {
+      // Dynamic Island States
+      attributes
+        .previewContext(contentState, viewKind: .dynamicIsland(.compact))
+        .previewDisplayName("DI Compact - In Progress")
+      
+      attributes
+        .previewContext(contentState, viewKind: .dynamicIsland(.expanded))
+        .previewDisplayName("DI Expanded - In Progress")
+      
+      attributes
+        .previewContext(contentState, viewKind: .dynamicIsland(.minimal))
+        .previewDisplayName("DI Minimal - In Progress")
+      
+      // Goal completed state
+      attributes
+        .previewContext(goalCompletedState, viewKind: .dynamicIsland(.expanded))
+        .previewDisplayName("DI Expanded - Goal Completed")
     }
+  }
 }
+*/

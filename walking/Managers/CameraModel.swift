@@ -10,47 +10,47 @@ class CameraModel: NSObject, ObservableObject, AVCapturePhotoCaptureDelegate, CL
   let session = AVCaptureSession()
   private let output = AVCapturePhotoOutput()
   private let queue = DispatchQueue(label: "camera.queue")
-
+  
   private let locationManager = CLLocationManager()
   private var currentLocation: CLLocation?
-
+  
   // Camera devices & input
   private var currentDevice: AVCaptureDevice?
   private var currentInput: AVCaptureDeviceInput?
-
+  
   // Exposure & focus
   @Published var exposureValue: Float = 0.0  // between minExposureTargetBias & maxExposureTargetBias
-
+  
   // Camera position (back = default)
   @Published var cameraPosition: AVCaptureDevice.Position = .back
-
+  
   // Store captured photos for the current walk
   @Published var capturedPhotos: [WalkImage] = []
-
+  
   override init() {
     super.init()
     configure(devicePosition: cameraPosition)
     configureLocation()
   }
-
+  
   private func configure(devicePosition: AVCaptureDevice.Position) {
     session.beginConfiguration()
-
+    
     // Remove old inputs
     if let currentInput = currentInput {
       session.removeInput(currentInput)
     }
-
+    
     // Select device
     guard let device = AVCaptureDevice.default(.builtInWideAngleCamera, for: .video, position: devicePosition) else {
       print("Failed to get camera device for position \(devicePosition)")
       session.commitConfiguration()
       return
     }
-
+    
     do {
       let input = try AVCaptureDeviceInput(device: device)
-
+      
       // Add input & output
       if session.canAddInput(input) {
         session.addInput(input)
@@ -59,13 +59,13 @@ class CameraModel: NSObject, ObservableObject, AVCapturePhotoCaptureDelegate, CL
       } else {
         print("Cannot add input to session")
       }
-
+      
       if !session.outputs.contains(output), session.canAddOutput(output) {
         session.addOutput(output)
       }
-
+      
       session.sessionPreset = .photo
-
+      
       // Lock device to configure exposure mode and focus mode defaults
       try device.lockForConfiguration()
       if device.isExposureModeSupported(.continuousAutoExposure) {
@@ -75,14 +75,14 @@ class CameraModel: NSObject, ObservableObject, AVCapturePhotoCaptureDelegate, CL
         device.focusMode = .continuousAutoFocus
       }
       device.unlockForConfiguration()
-
+      
     } catch {
       print("Error configuring device input: \(error.localizedDescription)")
     }
-
+    
     session.commitConfiguration()
   }
-
+  
   func switchCamera() {
     cameraPosition = (cameraPosition == .back) ? .front : .back
     queue.async { [weak self] in
@@ -92,7 +92,7 @@ class CameraModel: NSObject, ObservableObject, AVCapturePhotoCaptureDelegate, CL
       self.session.startRunning()
     }
   }
-
+  
   func startSession() {
     queue.async {
       if !self.session.isRunning {
@@ -100,7 +100,7 @@ class CameraModel: NSObject, ObservableObject, AVCapturePhotoCaptureDelegate, CL
       }
     }
   }
-
+  
   func stopSession() {
     queue.async {
       if self.session.isRunning {
@@ -108,9 +108,9 @@ class CameraModel: NSObject, ObservableObject, AVCapturePhotoCaptureDelegate, CL
       }
     }
   }
-
+  
   // MARK: Exposure control
-
+  
   func setExposure(value: Float) {
     guard let device = currentDevice else { return }
     do {
@@ -125,9 +125,9 @@ class CameraModel: NSObject, ObservableObject, AVCapturePhotoCaptureDelegate, CL
       print("Failed to set exposure: \(error)")
     }
   }
-
+  
   // MARK: Focus control with tap
-
+  
   func focus(at point: CGPoint, viewSize: CGSize) {
     guard let device = currentDevice else { return }
     let focusPoint = CGPoint(x: point.y / viewSize.height, y: 1.0 - (point.x / viewSize.width))
@@ -146,28 +146,28 @@ class CameraModel: NSObject, ObservableObject, AVCapturePhotoCaptureDelegate, CL
       print("Failed to set focus/exposure point: \(error)")
     }
   }
-
+  
   // MARK: Photos & Location (unchanged from your original)
-
+  
   private func configureLocation() {
     locationManager.delegate = self
     locationManager.requestWhenInUseAuthorization()
     locationManager.startUpdatingLocation()
   }
-
+  
   func locationManager(_ manager: CLLocationManager, didUpdateLocations locations: [CLLocation]) {
     currentLocation = locations.last
   }
-
+  
   func clearPhotos() {
     capturedPhotos.removeAll()
   }
-
+  
   func takePhoto() {
     let settings = AVCapturePhotoSettings()
     output.capturePhoto(with: settings, delegate: self)
   }
-
+  
   func photoOutput(_ output: AVCapturePhotoOutput, didFinishProcessingPhoto photo: AVCapturePhoto, error: Error?) {
     guard let photoData = photo.fileDataRepresentation(),
           let source = CGImageSourceCreateWithData(photoData as CFData, nil),
@@ -175,25 +175,25 @@ class CameraModel: NSObject, ObservableObject, AVCapturePhotoCaptureDelegate, CL
       print("Failed to get photo data")
       return
     }
-
+    
     let mutableData = NSMutableData()
     guard let destination = CGImageDestinationCreateWithData(mutableData, uti, 1, nil) else {
       print("Failed to create destination")
       return
     }
-
+    
     var metadata = photo.metadata
-
+    
     if let location = currentLocation {
       metadata[kCGImagePropertyGPSDictionary as String] = gpsMetadata(for: location)
     }
-
+    
     CGImageDestinationAddImageFromSource(destination, source, 0, metadata as CFDictionary)
     CGImageDestinationFinalize(destination)
-
+    
     saveToPhotoLibrary(data: mutableData as Data)
   }
-
+  
   private func saveToPhotoLibrary(data: Data) {
     PHPhotoLibrary.requestAuthorization { [weak self] status in
       if status == .authorized {
@@ -214,36 +214,36 @@ class CameraModel: NSObject, ObservableObject, AVCapturePhotoCaptureDelegate, CL
       }
     }
   }
-
+  
   private func addPhotoToCollection() {
     DispatchQueue.global(qos: .userInitiated).async {
       let fetchOptions = PHFetchOptions()
       fetchOptions.sortDescriptors = [NSSortDescriptor(key: "creationDate", ascending: false)]
       fetchOptions.fetchLimit = 1
-
+      
       let result = PHAsset.fetchAssets(with: .image, options: fetchOptions)
       guard let asset = result.firstObject else {
         print("No image asset found.")
         return
       }
-
+      
       let walkImage = WalkImage(
         imageType: .camera,
         localIdentifier: asset.localIdentifier,
         fileURL: nil
       )
-
+      
       DispatchQueue.main.async {
         self.capturedPhotos.append(walkImage)
       }
     }
   }
-
+  
   private func gpsMetadata(for location: CLLocation) -> [String: Any] {
     let formatter = DateFormatter()
     formatter.dateFormat = "HH:mm:ss.SS"
     formatter.timeZone = TimeZone(abbreviation: "UTC")
-
+    
     var gps = [String: Any]()
     gps[kCGImagePropertyGPSLatitude as String] = abs(location.coordinate.latitude)
     gps[kCGImagePropertyGPSLatitudeRef as String] = location.coordinate.latitude >= 0 ? "N" : "S"
@@ -254,43 +254,43 @@ class CameraModel: NSObject, ObservableObject, AVCapturePhotoCaptureDelegate, CL
     gps[kCGImagePropertyGPSTimeStamp as String] = formatter.string(from: location.timestamp)
     gps[kCGImagePropertyGPSDateStamp as String] = DateFormatter.localizedString(from: location.timestamp, dateStyle: .short, timeStyle: .none)
     gps[kCGImagePropertyGPSVersion as String] = "2.2.0.0"
-
+    
     return gps
   }
-
+  
   func fetchUIImage(for localIdentifier: String, completion: @escaping (UIImage?) -> Void) {
-      let assets = PHAsset.fetchAssets(withLocalIdentifiers: [localIdentifier], options: nil)
-      guard let asset = assets.firstObject else {
-          completion(nil)
-          return
-      }
-      let imageManager = PHImageManager.default()
-      let options = PHImageRequestOptions()
-      options.isSynchronous = false
-      options.deliveryMode = .highQualityFormat
-
-      imageManager.requestImage(for: asset,
-                                targetSize: CGSize(width: 300, height: 300),
-                                contentMode: .aspectFill,
-                                options: options) { image, _ in
-          completion(image)
-      }
+    let assets = PHAsset.fetchAssets(withLocalIdentifiers: [localIdentifier], options: nil)
+    guard let asset = assets.firstObject else {
+      completion(nil)
+      return
+    }
+    let imageManager = PHImageManager.default()
+    let options = PHImageRequestOptions()
+    options.isSynchronous = false
+    options.deliveryMode = .highQualityFormat
+    
+    imageManager.requestImage(for: asset,
+                              targetSize: CGSize(width: 300, height: 300),
+                              contentMode: .aspectFill,
+                              options: options) { image, _ in
+      completion(image)
+    }
   }
-
+  
   func deletePhoto(_ photo: WalkImage) {
-      guard let id = photo.localIdentifier else { return }
-
-      let assets = PHAsset.fetchAssets(withLocalIdentifiers: [id], options: nil)
-      PHPhotoLibrary.shared().performChanges({
-          PHAssetChangeRequest.deleteAssets(assets)
-      }, completionHandler: { [weak self] success, error in
-          if let error = error {
-              print("Failed to delete asset: \(error)")
-          } else if success {
-              DispatchQueue.main.async {
-                  self?.capturedPhotos.removeAll { $0.localIdentifier == id }
-              }
-          }
-      })
+    guard let id = photo.localIdentifier else { return }
+    
+    let assets = PHAsset.fetchAssets(withLocalIdentifiers: [id], options: nil)
+    PHPhotoLibrary.shared().performChanges({
+      PHAssetChangeRequest.deleteAssets(assets)
+    }, completionHandler: { [weak self] success, error in
+      if let error = error {
+        print("Failed to delete asset: \(error)")
+      } else if success {
+        DispatchQueue.main.async {
+          self?.capturedPhotos.removeAll { $0.localIdentifier == id }
+        }
+      }
+    })
   }
 }

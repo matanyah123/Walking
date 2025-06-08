@@ -32,33 +32,33 @@ struct StatsBarView: View {
   }
 
   private var collapsedView: some View {
-      VStack {
-          if locationManager.isTracking {
-              // Show current walk stats when actively tracking
-              VStack(spacing: 4) {
-                  Image(systemName: "shoeprints.fill")
-                      .font(.headline)
-                      .foregroundColor(.white)
+    VStack {
+      if locationManager.isTracking {
+        // Show current walk stats when actively tracking
+        VStack(spacing: 4) {
+          Image(systemName: "shoeprints.fill")
+            .font(.headline)
+            .foregroundColor(.white)
 
-                  let distanceValue = unit ? locationManager.distance : locationManager.distance * 3.28084
-                  let unitLabel = unit ? "m" : "ft"
-                  Text("\(String(format: "%.2f", distanceValue)) \(unitLabel)")
-                      .font(.caption2)
-                      .bold()
+          let distanceValue = unit ? locationManager.distance : locationManager.distance * 3.28084
+          let unitLabel = unit ? "m" : "ft"
+          Text("\(String(format: "%.2f", distanceValue)) \(unitLabel)")
+            .font(.caption2)
+            .bold()
 
-                  // Optional: Show tracking status
-                  Text("Tracking...")
-                      .font(.caption2)
-                      .opacity(0.7)
-              }
-          } else {
-              // Default state - no active or paused walk
-              Text("Good to\nsee you!")
-                  .font(.subheadline)
-                  .opacity(0.75)
-                  .multilineTextAlignment(.center)
-          }
+          // Optional: Show tracking status
+          Text("Tracking...")
+            .font(.caption2)
+            .opacity(0.7)
+        }
+      } else {
+        // Default state - no active or paused walk
+        Text("Good to\nsee you!")
+          .font(.subheadline)
+          .opacity(0.75)
+          .multilineTextAlignment(.center)
       }
+    }
   }
 
   private var expandedView: some View {
@@ -154,22 +154,22 @@ struct StatsBarView: View {
   ZStack{
     BlurView(style: .systemThinMaterialDark).ignoresSafeArea(.all)
     StatsBarView(
-        isStatsBarOpen: .constant(false),
-        started: .constant(true), tracking: $started,
-        goal: 1000.0,
-        locationManager: {
-            let manager = LocationManager()
-            manager.distance = 750
-            manager.maxSpeed = 5.2
-            manager.elevationGain = 12
-            manager.elevationLoss = 8
-            return manager
-        }(),
-        motionManager: {
-            let motion = MotionManager()
-            motion.stepCount = 1520
-            return motion
-        }()
+      isStatsBarOpen: .constant(false),
+      started: .constant(true), tracking: $started,
+      goal: 1000.0,
+      locationManager: {
+        let manager = LocationManager()
+        manager.distance = 750
+        manager.maxSpeed = 5.2
+        manager.elevationGain = 12
+        manager.elevationLoss = 8
+        return manager
+      }(),
+      motionManager: {
+        let motion = MotionManager()
+        motion.stepCount = 1520
+        return motion
+      }()
     )
   }.preferredColorScheme(.dark)
 }

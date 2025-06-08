@@ -23,12 +23,12 @@ struct CustomBottomBar: View {
   @ObservedObject var motionManager: MotionManager
   @ObservedObject var liveActivityManager: LiveActivityManager
   @ObservedObject var cameraModel: CameraModel
+  @ObservedObject var liveActions = LiveActions.shared
   @Environment(\.modelContext) private var modelContext
   @Query var savedWalks: [WalkData]
   @State private var timer: Timer? = nil
   @State private var showDeleteConfirmation = false
   @Binding var trackingMode: Int
-  @Binding var deepLink: String?
   @AppStorage("unit", store: UserDefaults(suiteName: "group.com.matanyah.WalkTracker")) var unit: Bool = true
 
   var body: some View {
@@ -47,11 +47,6 @@ struct CustomBottomBar: View {
         }
       }
     }
-    .onChange(of: deepLink) {
-      if deepLink == "group.com.matanyah.WalkTracker.start" {
-        startTracking()
-      }
-    }
     .onAppear {
       // Sync UI state with LocationManager state
       syncUIState()
@@ -64,6 +59,9 @@ struct CustomBottomBar: View {
     }
     .onChange(of: locationManager.hasSavedWalk) {
       syncUIState()
+    }
+    .onChange(of: liveActions.toggleWalk) {
+      toggleTracking()
     }
     .padding()
   }
@@ -230,20 +228,20 @@ struct CustomBottomBar: View {
   private var trackingControlsView: some View {
     HStack {
       Button {
-          showDeleteConfirmation = true
+        showDeleteConfirmation = true
       } label: {
-          SetIcon(icon: "trash.fill", isSelected: false, opacityValue: 0.75)
+        SetIcon(icon: "trash.fill", isSelected: false, opacityValue: 0.75)
       }
       .alert("Are you sure you want to delete?", isPresented: $showDeleteConfirmation) {
-          Button("Delete", role: .destructive) {
-              cancelTracking()
-              trackingMode = 0
-              goal = nil
-              UIImpactFeedbackGenerator(style: .soft).impactOccurred()
-          }
-          Button("Cancel", role: .cancel) {}
+        Button("Delete", role: .destructive) {
+          cancelTracking()
+          trackingMode = 0
+          goal = nil
+          UIImpactFeedbackGenerator(style: .soft).impactOccurred()
+        }
+        Button("Cancel", role: .cancel) {}
       }
-      
+
       Button {
         finishTracking()
         trackingMode = 0
@@ -334,7 +332,7 @@ struct CustomBottomBar: View {
   func startUpdating() {
     timer = Timer.scheduledTimer(withTimeInterval: 1, repeats: true) { _ in
       Task {
-        await liveActivityManager.updateLiveActivity(distance: locationManager.distance, steps: motionManager.stepCount)
+        await liveActivityManager.updateLiveActivity(distance: locationManager.distance, steps: motionManager.stepCount, isWalking: liveActions.toggleWalk)
       }
     }
   }
@@ -355,52 +353,52 @@ struct CustomBottomBar: View {
   }
 
   private func finishTracking() {
-      InAppNotificationManager.shared.show(message: "Walk has been saved.\nYou can view it in the app history.\nGood job!")
-      locationManager.stopTracking()
-      motionManager.stopTracking()
-      saveData()
-      locationManager.clearData()
-      motionManager.clearData()
-      WidgetCenter.shared.reloadAllTimelines()
-      Task {
-        stopUpdating()
-        await liveActivityManager.endLiveActivity()
-      }
+    InAppNotificationManager.shared.show(message: "Walk has been saved.\nYou can view it in the app history.\nGood job!")
+    locationManager.stopTracking()
+    motionManager.stopTracking()
+    saveData()
+    locationManager.clearData()
+    motionManager.clearData()
+    WidgetCenter.shared.reloadAllTimelines()
+    Task {
+      stopUpdating()
+      await liveActivityManager.endLiveActivity()
+    }
+  }
+
+  private func saveData() {
+    guard let startTime = locationManager.startTime, let endTime = locationManager.endTime else {
+      return
     }
 
-    private func saveData() {
-      guard let startTime = locationManager.startTime, let endTime = locationManager.endTime else {
-        return
-      }
+    let newWalk = WalkData(
+      date: Date(),
+      startTime: startTime,
+      endTime: endTime,
+      steps: motionManager.stepCount,
+      distance: locationManager.distance,
+      maxSpeed: locationManager.maxSpeed,
+      elevationGain: locationManager.elevationGain,
+      elevationLoss: locationManager.elevationLoss,
+      route: locationManager.route.map { $0.coordinate },
+      walkImages: cameraModel.capturedPhotos // Include captured photos
+    )
 
-      let newWalk = WalkData(
-        date: Date(),
-        startTime: startTime,
-        endTime: endTime,
-        steps: motionManager.stepCount,
-        distance: locationManager.distance,
-        maxSpeed: locationManager.maxSpeed,
-        elevationGain: locationManager.elevationGain,
-        elevationLoss: locationManager.elevationLoss,
-        route: locationManager.route.map { $0.coordinate },
-        walkImages: cameraModel.capturedPhotos // Include captured photos
-      )
-
-      // ✅ SwiftData: Save to persistent model context
-      modelContext.insert(newWalk)
-      do {
-        try modelContext.save()
-        print("✅ Walk saved with SwiftData and \(cameraModel.capturedPhotos.count) photos")
-      } catch {
-        print("❌ Error saving walk: \(error)")
-      }
-
-      // ✅ Still save the latest walk for the widget
-      saveWalkForWidget(walk: newWalk)
-
-      // Clear the photos after saving
-      cameraModel.clearPhotos()
+    // ✅ SwiftData: Save to persistent model context
+    modelContext.insert(newWalk)
+    do {
+      try modelContext.save()
+      print("✅ Walk saved with SwiftData and \(cameraModel.capturedPhotos.count) photos")
+    } catch {
+      print("❌ Error saving walk: \(error)")
     }
+
+    // ✅ Still save the latest walk for the widget
+    saveWalkForWidget(walk: newWalk)
+
+    // Clear the photos after saving
+    cameraModel.clearPhotos()
+  }
 
   // This function is referenced but not implemented in the original code
   private func saveWalkForWidget(walk: WalkData) {
@@ -444,7 +442,6 @@ struct TabIcon: View {
 }
 
 #Preview {
-  @Previewable @State var deepLink: String?
-  ContentView(deepLink: $deepLink)
+  ContentView()
     .preferredColorScheme(.dark)
 }

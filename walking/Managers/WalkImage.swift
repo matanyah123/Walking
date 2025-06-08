@@ -10,13 +10,13 @@ import Foundation
 import CoreLocation
 
 struct WalkImage: Codable, Identifiable {
-    enum ImageType: String, Codable {
-        case gallery
-        case camera
-    }
-
-    var id: UUID = UUID()
-    var imageType: ImageType
-    var localIdentifier: String? // For Photos framework images
-    var fileURL: URL?            // For generated images in app's file system
+  enum ImageType: String, Codable {
+    case gallery
+    case camera
+  }
+  
+  var id: UUID = UUID()
+  var imageType: ImageType
+  var localIdentifier: String? // For Photos framework images
+  var fileURL: URL?            // For generated images in app's file system
 }

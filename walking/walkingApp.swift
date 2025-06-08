@@ -13,48 +13,56 @@ import SwiftData
 @main
 struct walkingApp: App {
   @StateObject private var appTheme = AppTheme()
-  @State var deepLink: String?
+  @StateObject private var liveActions = LiveActions.shared
+
   var body: some Scene {
     WindowGroup {
-      ContentView(deepLink: $deepLink)
+      ContentView()
         .environmentObject(appTheme)
         .tint(appTheme.accentColor)
         .onOpenURL { url in
-          if url.scheme == "walking", url.host == "start" {            deepLink = "group.com.matanyah.walking.start"
-          }
+            switch url.host {
+            case "toggleWalk":
+              liveActions.toggleWalk.toggle()
+            case "openCamera":
+              liveActions.openCamera = true
+            case "startWalk":
+              liveActions.startWalk = true
+            default:
+                break
+            }
         }
     }.modelContainer(SharedDataContainer.shared.container)
   }
 }
 
 #Preview {
-  @Previewable @State var deepLink: String? = "start"
-  ContentView(deepLink: $deepLink)
+  ContentView()
     .preferredColorScheme(.dark)
 }
 
 class AppTheme: ObservableObject {
   @Published var accentColor: Color = .accentFromSettings
-    private var cancellables = Set<AnyCancellable>()
-
-    init() {
-        loadColor()
-
-        // Monitor for changes in UserDefaults
-        NotificationCenter.default
-            .publisher(for: UserDefaults.didChangeNotification)
-            .sink { [weak self] _ in
-                self?.loadColor()
-            }
-            .store(in: &cancellables)
-    }
-
-  private func loadColor() {
-      let data = UserDefaults(suiteName: "group.com.matanyah.WalkTracker")?.data(forKey: "accentColor") ?? Data()
-      let color = (try? JSONDecoder().decode(CodableColor.self, from: data))?.color ?? .blue
-
-      DispatchQueue.main.async { [weak self] in
-          self?.accentColor = color
+  private var cancellables = Set<AnyCancellable>()
+  
+  init() {
+    loadColor()
+    
+    // Monitor for changes in UserDefaults
+    NotificationCenter.default
+      .publisher(for: UserDefaults.didChangeNotification)
+      .sink { [weak self] _ in
+        self?.loadColor()
       }
+      .store(in: &cancellables)
+  }
+  
+  private func loadColor() {
+    let data = UserDefaults(suiteName: "group.com.matanyah.WalkTracker")?.data(forKey: "accentColor") ?? Data()
+    let color = (try? JSONDecoder().decode(CodableColor.self, from: data))?.color ?? .blue
+    
+    DispatchQueue.main.async { [weak self] in
+      self?.accentColor = color
+    }
   }
 }

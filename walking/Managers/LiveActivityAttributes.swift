@@ -12,6 +12,7 @@ struct LastRouteWidgetAttributes: ActivityAttributes {
   public struct ContentState: Codable, Hashable {
     var distance: Double
     var steps: Int
+    var isWalking: Bool
   }
 
   var name: String
@@ -22,8 +23,8 @@ struct LastRouteWidgetAttributes: ActivityAttributes {
 
 
 class LiveActivityManager: ObservableObject {
-    static let shared = LiveActivityManager()
-    @Published var currentActivity: Activity<LastRouteWidgetAttributes>? = nil
+  static let shared = LiveActivityManager()
+  @Published var currentActivity: Activity<LastRouteWidgetAttributes>? = nil
 
   func startLiveActivity() async {
     let colorData = UserDefaults.shared.data(forKey: "accentColor")
@@ -34,7 +35,7 @@ class LiveActivityManager: ObservableObject {
 
     let attributes = LastRouteWidgetAttributes(name: "Matanyah's Walk", accentColor: accent, currentGoalOverride: goal, unit: unit) // pass goal
 
-    let initialState = LastRouteWidgetAttributes.ContentState(distance: 0, steps: 0)
+    let initialState = LastRouteWidgetAttributes.ContentState(distance: 0, steps: 0, isWalking: true)
 
     do {
       let activity = try Activity<LastRouteWidgetAttributes>.request(
@@ -51,23 +52,23 @@ class LiveActivityManager: ObservableObject {
     }
   }
 
-    func updateLiveActivity(distance: Double, steps: Int) async {
-        guard let activity = currentActivity else { return }
+  func updateLiveActivity(distance: Double, steps: Int, isWalking: Bool) async {
+    guard let activity = currentActivity else { return }
 
-        let updatedState = LastRouteWidgetAttributes.ContentState(distance: distance, steps: steps)
-        await activity.update(using: updatedState)
+    let updatedState = LastRouteWidgetAttributes.ContentState(distance: distance, steps: steps, isWalking: isWalking)
+    await activity.update(using: updatedState)
+  }
+
+  func endLiveActivity() async {
+    guard let activity = currentActivity else { return }
+
+    let finalState = LastRouteWidgetAttributes.ContentState(distance: 0, steps: 0, isWalking: true)
+    await activity.end(using: finalState, dismissalPolicy: .immediate)
+
+    DispatchQueue.main.async {
+      self.currentActivity = nil
     }
-
-    func endLiveActivity() async {
-        guard let activity = currentActivity else { return }
-
-        let finalState = LastRouteWidgetAttributes.ContentState(distance: 0, steps: 0)
-        await activity.end(using: finalState, dismissalPolicy: .immediate)
-
-        DispatchQueue.main.async {
-            self.currentActivity = nil
-        }
-    }
+  }
 }
 
 enum SharedKeys {

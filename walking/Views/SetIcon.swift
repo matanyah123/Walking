@@ -11,7 +11,7 @@ struct SetIcon: View {
   var icon: String
   var isSelected: Bool
   var opacityValue: Double
-
+  
   var body: some View {
     ZStack {
       BlurView(style: .systemUltraThinMaterialLight)
