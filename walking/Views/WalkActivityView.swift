@@ -31,6 +31,11 @@ struct WalkActivityView: View {
 
   @State private var showDeleteConfirmation = false
   @State private var walkToDelete: WalkData?
+  @State private var highlightLastWalk = false
+  @State private var selectedWalkForEditing: WalkData?
+  @State private var editingName = ""
+  @Binding var isLastOneGlows: Bool
+
   var body: some View {
     NavigationStack {
       List {
@@ -46,54 +51,58 @@ struct WalkActivityView: View {
           }
           if !groupedRecentWalks.isEmpty {
             ForEach(groupedRecentWalks, id: \.0) { date, walks in
-              Section(header: Text(formattedDisplayDate(from: date)).font(.headline)) {
-                ForEach(walks) { walk in
-                  NavigationLink(destination: WalkDetailView(walk: walk)) {
-                    HStack {
-                      VStack(alignment: .leading, spacing: 4) {
-                        Text("\(walk.distance, specifier: "%.2f") \(unit ? "meters" : "miles")")
-                          .font(.body)
-                          .fontWeight(.medium)
-                        
-                        HStack {
-                          Text("Steps: \(walk.steps)")
-                            .font(.caption)
-                            .foregroundColor(.secondary)
-                          
-                          Spacer()
-                          
-                          Text(formattedTime(walk.startTime))
-                            .font(.caption)
-                            .foregroundColor(.secondary)
-                        }
-                        
-                        if walk.duration > 0 {
-                          Text("Duration: \(formattedDuration(walk.duration))")
-                            .font(.caption2)
-                            .foregroundColor(.secondary)
-                        }
+                Section(header: Text(formattedDisplayDate(from: date)).font(.headline)) {
+                    ForEach(walks) { walk in
+                      NavigationLink(destination: WalkDetailView(walk: walk)) {
+                          VStack(alignment: .leading, spacing: 4) {
+                              Text(displayName(for: walk))
+                                  .font(.body)
+                                  .fontWeight(.medium)
+
+                              Text("\(walk.distance, specifier: "%.2f") \(unit ? "meters" : "miles") • \(walk.steps) steps")
+                                  .font(.caption)
+                                  .foregroundColor(.secondary)
+
+                              Text(walk.formattedDuration)
+                                  .font(.caption2)
+                                  .foregroundColor(.secondary)
+                          }
+                          .padding(.vertical, 6)
+                          .padding(.horizontal)
+                          .background(
+                              (highlightLastWalk && isLastWalk(walk)) ?
+                              RoundedRectangle(cornerRadius: 10)
+                                .fill(Color.accentFromSettings)
+                                .shadow(color: Color.accentFromSettings.opacity(0.6), radius: 10)
+                              : nil
+                          )
+                          .animation(.easeInOut(duration: 0.3), value: highlightLastWalk)
+                          .cornerRadius(10)
                       }
+                        .swipeActions(edge: .trailing) {
+                            Button(role: .destructive) {
+                                walkToDelete = walk
+                                showDeleteConfirmation = true
+                            } label: {
+                                Label("Delete", systemImage: "trash").tint(.red)
+                            }
+                            .tint(.red)
+                        }
+                        .swipeActions(edge: .leading) {
+                          Button {
+                              selectedWalkForEditing = walk
+                              editingName = walk.name ?? ""
+                          } label: {
+                              Label("Edit", systemImage: "pencil")
+                          }.tint(.orange)
+                            Button {
+                                shareWalkSnapshot(walk: walk)
+                            } label: {
+                                Label("Share", systemImage: "square.and.arrow.up")
+                            }
+                        }
                     }
-                    .padding(.vertical, 6)
-                  }
-                  .swipeActions(edge: .trailing) {
-                    Button(role: .destructive) {
-                      walkToDelete = walk
-                      showDeleteConfirmation = true
-                    } label: {
-                      Label("Delete", systemImage: "trash").tint(.red)
-                    }
-                    .tint(.red)
-                  }
-                  .swipeActions(edge: .leading) {
-                    Button {
-                      shareWalkSnapshot(walk: walk)
-                    } label: {
-                      Label("Share", systemImage: "square.and.arrow.up")
-                    }
-                  }
                 }
-              }
             }
           } else {
             ContentUnavailableView(
@@ -111,8 +120,55 @@ struct WalkActivityView: View {
         } message: { _ in
             Text("This action cannot be undone.")
         }
+        .sheet(item: $selectedWalkForEditing) { walk in
+            NavigationView {
+                VStack(spacing: 20) {
+                    Text("Edit Walk Name")
+                        .font(.title2)
+                        .fontWeight(.semibold)
+
+                    TextField("Enter a name", text: $editingName)
+                        .textFieldStyle(RoundedBorderTextFieldStyle())
+                        .padding(.horizontal)
+
+                    Spacer()
+                }
+                .padding()
+                .navigationBarTitleDisplayMode(.inline)
+                .toolbar {
+                    ToolbarItem(placement: .navigationBarLeading) {
+                        Button("Cancel") {
+                            selectedWalkForEditing = nil
+                        }
+                    }
+                    ToolbarItem(placement: .navigationBarTrailing) {
+                        Button("Save") {
+                            saveWalkName(walk: walk, newName: editingName)
+                            selectedWalkForEditing = nil
+                        }
+                    }
+                }
+            }
+        }
       }.navigationTitle("Your Activity")
     }
+    .onChange(of: isLastOneGlows) { newValue in
+        if newValue {
+            highlightLastWalk = true
+            DispatchQueue.main.asyncAfter(deadline: .now() + 5) {
+                withAnimation {
+                    highlightLastWalk = false
+                    isLastOneGlows = false
+                }
+            }
+        }
+    }
+  }
+
+  // Helper function to determine if this is the most recent walk
+  private func isLastWalk(_ walk: WalkData) -> Bool {
+      guard let mostRecentWalk = recentWalks.first else { return false }
+      return walk.id == mostRecentWalk.id
   }
 
   private func deleteWalk(_ walk: WalkData) {
@@ -124,6 +180,21 @@ struct WalkActivityView: View {
       } catch {
           print("Failed to delete walk: \(error)")
       }
+  }
+
+  // Added the missing saveWalkName function
+  private func saveWalkName(walk: WalkData, newName: String) {
+      walk.name = newName.isEmpty ? nil : newName
+      do {
+          try modelContext.save()
+      } catch {
+          print("Failed to save walk name: \(error)")
+      }
+  }
+
+  // Helper function to get display name for a walk
+  private func displayName(for walk: WalkData) -> String {
+      return walk.name ?? "Walk on \(formattedDate(walk.date))"
   }
 
   private func formattedDisplayDate(from isoDate: String) -> String {
@@ -141,6 +212,13 @@ struct WalkActivityView: View {
           }
       }
       return isoDate
+  }
+
+  // Added missing formattedDate function
+  private func formattedDate(_ date: Date) -> String {
+      let formatter = DateFormatter()
+      formatter.dateStyle = .medium
+      return formatter.string(from: date)
   }
 
   private func formattedTime(_ date: Date) -> String {
@@ -163,5 +241,6 @@ struct WalkActivityView: View {
 }
 
 #Preview {
-  WalkActivityView()
+  @Previewable @State var isLastOneGlows: Bool = true
+  WalkActivityView(isLastOneGlows: $isLastOneGlows)
 }

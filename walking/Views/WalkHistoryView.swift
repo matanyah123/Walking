@@ -31,6 +31,8 @@ struct WalkHistoryView: View {
 
     @State private var showDeleteConfirmation = false
     @State private var walkToDelete: WalkData?
+    @State private var selectedWalkForEditing: WalkData?
+    @State private var editingName = ""
 
     @AppStorage("unit", store: UserDefaults(suiteName: "group.com.matanyah.WalkTracker")) var unit: Bool = true
 
@@ -42,11 +44,20 @@ struct WalkHistoryView: View {
                         Section(header: Text(formattedDisplayDate(from: date)).font(.headline)) {
                             ForEach(walks) { walk in
                                 NavigationLink(destination: WalkDetailView(walk: walk)) {
-                                    VStack(alignment: .leading) {
-                                        Text("\(walk.distance, specifier: "%.2f") \(unit ? "meters" : "miles")")
+                                    VStack(alignment: .leading, spacing: 4) {
+                                        // Display walk name or fallback to default format
+                                        Text(displayName(for: walk))
                                             .font(.body)
-                                        Text("Steps: \(walk.steps)")
+                                            .fontWeight(.medium)
+
+                                        // Always show distance and steps as secondary info
+                                        Text("\(walk.distance, specifier: "%.2f") \(unit ? "meters" : "miles") • \(walk.steps) steps")
                                             .font(.caption)
+                                            .foregroundColor(.secondary)
+
+                                        // Show duration as well
+                                        Text(walk.formattedDuration)
+                                            .font(.caption2)
                                             .foregroundColor(.secondary)
                                     }
                                     .padding(.vertical, 6)
@@ -61,6 +72,12 @@ struct WalkHistoryView: View {
                                     .tint(.red)
                                 }
                                 .swipeActions(edge: .leading) {
+                                  Button {
+                                      selectedWalkForEditing = walk
+                                      editingName = walk.name ?? ""
+                                  } label: {
+                                      Label("Edit", systemImage: "pencil")
+                                  }.tint(.orange)
                                     Button {
                                         shareWalkSnapshot(walk: walk)
                                     } label: {
@@ -72,19 +89,67 @@ struct WalkHistoryView: View {
                     }
                 } else {
                     Text("No walks yet!")
+                        .foregroundColor(.secondary)
+                        .font(.body)
+                        .padding()
                 }
             }
             .navigationTitle("Walk History")
+            .safeAreaInset(edge: .bottom) {
+              Color.clear.frame(height: 80)
+            }
         }
         .alert("Are you sure?", isPresented: $showDeleteConfirmation, presenting: walkToDelete) { walk in
             Button("Delete", role: .destructive) {
                 deleteWalk(walk)
-              UIImpactFeedbackGenerator(style: .light).impactOccurred()
+                UIImpactFeedbackGenerator(style: .light).impactOccurred()
             }
             Button("Cancel", role: .cancel) { }
         } message: { _ in
             Text("This action cannot be undone.")
         }
+        .sheet(item: $selectedWalkForEditing) { walk in
+            NavigationView {
+                VStack(spacing: 20) {
+                    Text("Edit Walk Name")
+                        .font(.title2)
+                        .fontWeight(.semibold)
+
+                    TextField("Enter a name", text: $editingName)
+                        .textFieldStyle(RoundedBorderTextFieldStyle())
+                        .padding(.horizontal)
+
+                    Spacer()
+                }
+                .padding()
+                .navigationBarTitleDisplayMode(.inline)
+                .toolbar {
+                    ToolbarItem(placement: .navigationBarLeading) {
+                        Button("Cancel") {
+                            selectedWalkForEditing = nil
+                        }
+                    }
+                    ToolbarItem(placement: .navigationBarTrailing) {
+                        Button("Save") {
+                            saveWalkName(walk: walk, newName: editingName)
+                            selectedWalkForEditing = nil
+                        }
+                    }
+                }
+            }
+        }
+    }
+
+    // Helper function to get display name for a walk
+    private func displayName(for walk: WalkData) -> String {
+        return walk.name ?? "Walk on \(formattedDate(walk.date))"
+    }
+
+    // Helper function to format date for walk names
+    private func formattedDate(_ date: Date) -> String {
+        let formatter = DateFormatter()
+        formatter.dateStyle = .medium
+        return formatter.string(from: date)
     }
 
     private func deleteWalk(_ walk: WalkData) {
@@ -95,6 +160,15 @@ struct WalkHistoryView: View {
             WidgetCenter.shared.reloadAllTimelines()
         } catch {
             print("Failed to delete walk: \(error)")
+        }
+    }
+
+    private func saveWalkName(walk: WalkData, newName: String) {
+        walk.name = newName.isEmpty ? nil : newName
+        do {
+            try modelContext.save()
+        } catch {
+            print("Failed to save walk name: \(error)")
         }
     }
 
@@ -183,8 +257,15 @@ struct WalkDetailView: View {
   @State private var isViewReady = false
   @State private var shouldShareAfterLoad = false
   @State private var trackingMode: Int = 0
+  @State private var isEditingName = false
+  @State private var editingName: String = ""
   @AppStorage("darkMode", store: UserDefaults(suiteName: "group.com.matanyah.WalkTracker")) var darkMode: Bool = true
   @AppStorage("unit", store: UserDefaults(suiteName: "group.com.matanyah.WalkTracker")) var unit: Bool = true
+
+  // Computed property for display name (not @State)
+  private var displayName: String {
+    return walk.name ?? "Walk on \(formattedDate())"
+  }
 
   var body: some View {
     NavigationStack {
@@ -202,6 +283,8 @@ struct WalkDetailView: View {
           if !isViewReady {
             loadWalkImages()
           }
+          // Initialize editing name when view appears
+          editingName = walk.name ?? ""
         }
       }
       .sheet(isPresented: $isSharedViewOpen) {
@@ -215,8 +298,39 @@ struct WalkDetailView: View {
           isViewReady = false
         }
       }
-      .navigationTitle(formattedDate())
-      .navigationBarTitleDisplayMode(.large)
+      .navigationTitle("")
+      .navigationBarTitleDisplayMode(.inline)
+      .toolbar {
+        ToolbarItem(placement: .principal) {
+          HStack {
+            if isEditingName {
+              TextField("Walk name", text: $editingName)
+                .textFieldStyle(RoundedBorderTextFieldStyle())
+                .foregroundColor(.white)
+                .font(.title3)
+                .bold()
+                .onSubmit {
+                  saveWalkName()
+                }
+            } else {
+              Text(displayName)
+                .font(.largeTitle)
+                .fontWeight(.bold)
+            }
+
+            Button(action: {
+              if isEditingName {
+                saveWalkName()
+              } else {
+                isEditingName = true
+              }
+            }) {
+              Image(systemName: isEditingName ? "checkmark" : "pencil")
+                .foregroundColor(.accentFromSettings)
+            }
+          }
+        }
+      }
     }
   }
 
@@ -526,6 +640,13 @@ struct WalkDetailView: View {
       self.isLoadingImages = false
       print("Finished loading images. Total loaded: \(self.loadedImages.count)")
     }
+  }
+
+  private func saveWalkName() {
+    let trimmedName = editingName.trimmingCharacters(in: .whitespacesAndNewlines)
+    walk.name = trimmedName.isEmpty ? nil : trimmedName
+    isEditingName = false
+    UIImpactFeedbackGenerator(style: .light).impactOccurred()
   }
 }
 

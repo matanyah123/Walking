@@ -20,7 +20,7 @@ extension WalkData {
 
 extension WalkData: Codable {
   enum CodingKeys: String, CodingKey {
-    case id, date, startTime, endTime, steps, distance, maxSpeed, elevationGain, elevationLoss, route
+    case id, date, startTime, endTime, steps, distance, maxSpeed, elevationGain, elevationLoss, route, name
   }
 
   public func encode(to encoder: Encoder) throws {
@@ -35,7 +35,8 @@ extension WalkData: Codable {
     try container.encode(maxSpeed, forKey: .maxSpeed)
     try container.encode(elevationGain, forKey: .elevationGain)
     try container.encode(elevationLoss, forKey: .elevationLoss)
-    try container.encode(route, forKey: .route) // Use computed property
+    try container.encode(route, forKey: .route)
+    try container.encodeIfPresent(name, forKey: .name) // Use encodeIfPresent for optional
   }
 }
 
@@ -63,6 +64,7 @@ final class WalkData {
     var elevationGain: Double
     var elevationLoss: Double
     @Attribute(.externalStorage) var routeData: Data
+    var name: String? // Optional walk name
 
     var duration: TimeInterval {
         return endTime.timeIntervalSince(startTime)
@@ -103,7 +105,8 @@ final class WalkData {
       elevationGain: Double,
       elevationLoss: Double,
       route: [CLLocationCoordinate2D],
-      walkImages: [WalkImage] = []
+      walkImages: [WalkImage] = [],
+      name: String? = nil // Optional parameter with default nil
   ) {
       self.id = UUID()
       self.date = date
@@ -114,6 +117,7 @@ final class WalkData {
       self.maxSpeed = maxSpeed
       self.elevationGain = elevationGain
       self.elevationLoss = elevationLoss
+      self.name = name
 
       if let data = try? JSONEncoder().encode(route) {
           self.routeData = data
@@ -141,6 +145,7 @@ final class WalkData {
       let elevationGain = try container.decode(Double.self, forKey: .elevationGain)
       let elevationLoss = try container.decode(Double.self, forKey: .elevationLoss)
       let route = try container.decode([CLLocationCoordinate2D].self, forKey: .route)
+      let name = try container.decodeIfPresent(String.self, forKey: .name) // Use decodeIfPresent
 
       self.init(
           date: date,
@@ -151,7 +156,8 @@ final class WalkData {
           maxSpeed: maxSpeed,
           elevationGain: elevationGain,
           elevationLoss: elevationLoss,
-          route: route
+          route: route,
+          name: name
       )
 
       self.id = id
@@ -190,10 +196,12 @@ extension WalkData {
             maxSpeed: 2.5,
             elevationGain: 30,
             elevationLoss: 25,
-            route: route
+            route: route,
+            name: "Morning Heart Walk" // Example name for dummy data
         )
     }
 }
+
 func generateHeartRoute(center: CLLocationCoordinate2D, radius: Double = 0.0003, resolution: Int = 300) -> [CLLocationCoordinate2D] {
     let points = stride(from: 0.0, through: 2 * Double.pi, by: 2 * Double.pi / Double(resolution)).map { t -> CLLocationCoordinate2D in
         let x = 16 * pow(sin(t), 3)

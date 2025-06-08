@@ -10,6 +10,7 @@ import SwiftUI
 
 struct InAppBanner: View {
     @ObservedObject var manager = InAppNotificationManager.shared
+    @StateObject private var viewModel = ContentViewModel.shared
 
     var body: some View {
         if manager.isVisible {
@@ -32,6 +33,11 @@ struct InAppBanner: View {
                 .cornerRadius(10)
                 .padding(.horizontal)
                 .padding(.top, 50) // for status bar
+                .onTapGesture {
+                  viewModel.isSearchActive = false
+                  viewModel.selectedTab = .walk
+                  manager.dismiss()
+                }
                 Spacer()
             }
             .transition(.move(edge: .top).combined(with: .opacity))

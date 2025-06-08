@@ -16,6 +16,7 @@ enum Tab {
 }
 
 class ContentViewModel: ObservableObject {
+  static let shared = ContentViewModel()
   @Published var isKeyboardVisible = false
   @Published var selectedDetent: PresentationDetent = .medium
   @Published var selectedTab: Tab = .home
@@ -25,6 +26,8 @@ class ContentViewModel: ObservableObject {
   @Published var offset: CGFloat = 0
   @Published var tracking = false
   @Published var started = false
+  @Published var isLastOneGlows = false
+  @Published var isSearchActive = false
   @Published var goal: Double? {
     didSet {
       if let goal = goal {
@@ -52,7 +55,7 @@ class ContentViewModel: ObservableObject {
 struct ContentView: View {
   //@Environment(\.modelContext) private var modelContext
   @Binding var deepLink: String?
-  @StateObject private var viewModel = ContentViewModel()
+  @StateObject private var viewModel = ContentViewModel.shared
   @StateObject private var locationManager = LocationManager()
   @StateObject private var motionManager = MotionManager()
   @StateObject var liveActivityManager = LiveActivityManager()
@@ -77,7 +80,7 @@ struct ContentView: View {
         tracking: $viewModel.tracking,
         doYouNeedAGoal: $viewModel.doYouNeedAGoal,
         goal: $viewModel.goal,
-        goalTarget: viewModel.goalTarget,
+        goalTarget: viewModel.goalTarget, isSearchActive: $viewModel.isSearchActive,
         selectedTab: $viewModel.selectedTab,
         locationManager: locationManager,
         motionManager: motionManager,
@@ -133,7 +136,7 @@ struct ContentView: View {
       case .home:
         homeTabView()
       case .walk:
-        WalkActivityView()
+        WalkActivityView(isLastOneGlows: $viewModel.isLastOneGlows)
           .colorScheme(viewModel.darkMode ? .dark : .light)
       case .settings:
         SettingsView(doYouNeedAGoal: $viewModel.doYouNeedAGoal)

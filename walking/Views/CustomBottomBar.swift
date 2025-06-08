@@ -16,7 +16,7 @@ struct CustomBottomBar: View {
   @Binding var goal: Double?
   let goalTarget: Int
   @Namespace private var animation
-  @State private var isSearchActive: Bool = false
+  @Binding var isSearchActive: Bool
   @State private var lastSyncedGoal: Double?
   @Binding var selectedTab: Tab
   @ObservedObject var locationManager: LocationManager
