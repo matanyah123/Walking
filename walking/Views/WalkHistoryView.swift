@@ -88,10 +88,11 @@ struct WalkHistoryView: View {
             }
           }
         } else {
-          Text("No walks yet!")
-            .foregroundColor(.secondary)
-            .font(.body)
-            .padding()
+          ContentUnavailableView(
+            "No Recent Walks",
+            systemImage: "figure.walk.circle",
+            description: Text("Start tracking your walks to see them here")
+          )
         }
       }
       .navigationTitle("Walk History")
@@ -250,6 +251,7 @@ struct WalkHistoryView: View {
 
 struct WalkDetailView: View {
   let walk: WalkData
+  @Environment(\.modelContext) private var modelContext
   @State private var loadedImages: [UIImage] = []
   @State private var isLoadingImages = false
   @State private var isMiniMapOpen = false
@@ -271,16 +273,7 @@ struct WalkDetailView: View {
 
   var body: some View {
     NavigationStack {
-      GeometryReader { geometry in
-        let isLandscape = geometry.size.width > geometry.size.height
-
-        ScrollView {
-          if isLandscape {
-            portraitView
-          } else {
-            portraitView
-          }
-        }
+        portraitView
         .onAppear {
           if !isViewReady {
             loadWalkImages()
@@ -288,7 +281,6 @@ struct WalkDetailView: View {
           // Initialize editing name when view appears
           editingName = walk.name ?? ""
         }
-      }
       .sheet(isPresented: $isSharedViewOpen) {
         Sharedview(walk: walk, isViewReady: $isViewReady)
       }
@@ -300,218 +292,222 @@ struct WalkDetailView: View {
           isViewReady = false
         }
       }
+      .navigationTitle(displayName)
       .toolbar {
-        ToolbarItem(placement: .principal) {
-          HStack {
-            if isEditingName {
-              TextField("Walk name", text: $editingName)
-                .textFieldStyle(RoundedBorderTextFieldStyle())
-                .foregroundColor(.white)
-                .font(.title3)
-                .bold()
-                .onSubmit {
-                  saveWalkName()
-                }
-            } else {
-              Text(displayName)
-                .font(.largeTitle)
-                .fontWeight(.bold)
+        ToolbarItem(placement: .topBarTrailing) {
+          HStack{
+            Button {
+              shareWalkSnapshot(walk: walk)
+            } label: {
+              Image(systemName: "square.and.arrow.up")
+                .foregroundColor(.accentFromSettings)
             }
-
-            Button(action: {
-              if isEditingName {
-                saveWalkName()
-              } else {
-                isEditingName = true
-              }
-            }) {
-              Image(systemName: isEditingName ? "checkmark" : "pencil")
+            Button {
+              isEditingName = true
+            } label: {
+              Image(systemName: "pencil")
                 .foregroundColor(.accentFromSettings)
             }
           }
         }
       }
-      .safeAreaInset(edge: .bottom) {
-        Color.clear.frame(height: 80)
+      .sheet(isPresented: $isEditingName) {
+        NavigationView {
+          VStack(spacing: 20) {
+            Text("Edit Walk Name")
+              .font(.title2)
+              .fontWeight(.semibold)
+
+            TextField("Enter a name", text: $editingName)
+              .textFieldStyle(RoundedBorderTextFieldStyle())
+              .padding(.horizontal)
+
+            Spacer()
+          }
+          .padding()
+          .navigationBarTitleDisplayMode(.inline)
+          .toolbar {
+            ToolbarItem(placement: .navigationBarTrailing) {
+              Button("Save") {
+                saveWalkName(walk: walk, newName: editingName)
+              }
+            }
+          }
+        }
       }
     }
   }
 
   // Portrait layout
   private var portraitView: some View {
-    VStack(spacing: 20) {
-      WalkCard {
-        HStack {
-          Image(systemName: "figure.walk")
-            .font(.title)
-          VStack(alignment: .leading) {
-            Text("Distance")
-              .font(.caption)
-              .foregroundColor(.secondary)
-            Text("\(walk.distance, specifier: "%.2f") \(unit ? "me" : "mi")")
-              .font(.headline)
-          }
-          Spacer()
-          VStack(alignment: .trailing) {
-            Text("Steps")
-              .font(.caption)
-              .foregroundColor(.secondary)
-            Text("\(walk.steps)")
-              .font(.headline)
+    ScrollView{
+      VStack(spacing: 20) {
+        WalkCard {
+          HStack {
+            Image(systemName: "figure.walk")
+              .font(.title)
+            VStack(alignment: .leading) {
+              Text("Distance")
+                .font(.caption)
+                .foregroundColor(.secondary)
+              Text("\(walk.distance, specifier: "%.2f") \(unit ? "me" : "mi")")
+                .font(.headline)
+            }
+            Spacer()
+            VStack(alignment: .trailing) {
+              Text("Steps")
+                .font(.caption)
+                .foregroundColor(.secondary)
+              Text("\(walk.steps)")
+                .font(.headline)
+            }
           }
         }
-      }
 
-      WalkCard {
-        NavigationLink{
-          MapView(route: walk.route.map { CLLocation(latitude: $0.latitude, longitude: $0.longitude) }, showUserLocation: false, trackingMode: $trackingMode, showImages: true, images: walk.walkImages, showImageSheet: $showImageSheet, selectedImage: $selectedImage)
-            .ignoresSafeArea()
-            .colorScheme(darkMode ? .dark : .light)
-            .sheet(isPresented: $showImageSheet) {
+        WalkCard {
+          NavigationLink{
+            MapView(route: walk.route.map { CLLocation(latitude: $0.latitude, longitude: $0.longitude) }, showUserLocation: false, trackingMode: $trackingMode, showImages: true, images: walk.walkImages, showImageSheet: $showImageSheet, selectedImage: $selectedImage)
+              .ignoresSafeArea()
+              .colorScheme(darkMode ? .dark : .light)
+              .sheet(isPresented: $showImageSheet) {
                 if let selectedImage = selectedImage,
                    let imageIndex = walk.walkImages.firstIndex(where: { $0.id == selectedImage.id }),
                    imageIndex < loadedImages.count,
                    loadedImages[imageIndex] != nil {
-                    PhotoPagerView(
-                        images: loadedImages.compactMap { $0 }, // Only non-nil images
-                        startIndex: loadedImages.prefix(upTo: imageIndex).compactMap { $0 }.count
-                    )
+                  PhotoPagerView(
+                    images: loadedImages.compactMap { $0 }, // Only non-nil images
+                    startIndex: loadedImages.prefix(upTo: imageIndex).compactMap { $0 }.count
+                  )
                 } else {
-                    // Fallback view when image can't be found
-                    VStack(spacing: 20) {
-                        Image(systemName: "photo")
-                            .font(.system(size: 60))
-                            .foregroundColor(.gray)
+                  // Fallback view when image can't be found
+                  VStack(spacing: 20) {
+                    Image(systemName: "photo")
+                      .font(.system(size: 60))
+                      .foregroundColor(.gray)
 
-                        Text("Image Not Available")
-                            .font(.title2)
-                            .foregroundColor(.secondary)
+                    Text("Image Not Available")
+                      .font(.title2)
+                      .foregroundColor(.secondary)
 
-                        Button("Close") {
-                            showImageSheet = false
-                            selectedImage = nil
-                        }
-                        .buttonStyle(.borderedProminent)
+                    Button("Close") {
+                      showImageSheet = false
+                      selectedImage = nil
                     }
-                    .frame(maxWidth: .infinity, maxHeight: .infinity)
-                    .background(Color.black)
-                    .presentationDetents([.medium])
+                    .buttonStyle(.borderedProminent)
+                  }
+                  .frame(maxWidth: .infinity, maxHeight: .infinity)
+                  .background(Color.black)
+                  .presentationDetents([.medium])
                 }
-            }
-        } label: {
-          MapView(route: walk.route.map { CLLocation(latitude: $0.latitude, longitude: $0.longitude) }, showUserLocation: false,trackingMode: $trackingMode, showImageSheet: $showImageSheet, selectedImage: $selectedImage)
-            .frame(height: 200)
-            .cornerRadius(15)
-            .overlay(
-              Color.clear
-                .contentShape(Rectangle()) // Make overlay cover full frame
-                .allowsHitTesting(true)    // Blocks interaction on the map beneath
-            )
+              }
+          } label: {
+            MapView(route: walk.route.map { CLLocation(latitude: $0.latitude, longitude: $0.longitude) }, showUserLocation: false,trackingMode: $trackingMode, showImageSheet: $showImageSheet, selectedImage: $selectedImage)
+              .frame(height: 200)
+              .cornerRadius(15)
+              .overlay(
+                Color.clear
+                  .contentShape(Rectangle()) // Make overlay cover full frame
+                  .allowsHitTesting(true)    // Blocks interaction on the map beneath
+              )
+          }
+
         }
+        .frame(maxWidth: .infinity)
 
-      }
-      .frame(maxWidth: .infinity)
+        infoCards
+        VStack(alignment: .leading, spacing: 12) {
+          HStack {
+            Text("Photos")
+              .font(.title2)
+              .fontWeight(.bold)
 
-      infoCards
-      VStack(alignment: .leading, spacing: 12) {
-        HStack {
-          Text("Photos")
-            .font(.title2)
-            .fontWeight(.bold)
+            Spacer()
 
-          Spacer()
-
-          Text("\(walk.walkImages.count) photo\(walk.walkImages.count == 1 ? "" : "s")")
-            .font(.caption)
-            .foregroundColor(.secondary)
-        }
-
-        if isLoadingImages {
-          VStack(spacing: 8) {
-            Image(systemName: "photo")
-              .resizable()
-              .scaledToFit()
-              .frame(width: 50, height: 50)
-              .foregroundColor(.gray)
-
-            Text("Image missing")
+            Text("\(walk.walkImages.count) photo\(walk.walkImages.count == 1 ? "" : "s")")
               .font(.caption)
-              .multilineTextAlignment(.center)
               .foregroundColor(.secondary)
           }
-          .frame(width: 100, height: 100)
-          .background(Color.gray.opacity(0.1))
-          .cornerRadius(8)
-        } else {
-          // In WalkDetailView, modify the PhotoGridView usage:
 
-          PhotoGridView(
-            images: loadedImages,
-            onImageDelete: { index in
-              walk.walkImages.remove(at: index)
-              loadedImages.remove(at: index)
-              UIImpactFeedbackGenerator(style: .light).impactOccurred()
-            },
-            onImagesAdded: { newImages in
-              // Add new images to the loaded images array first
-              loadedImages.append(contentsOf: newImages)
+          if isLoadingImages {
+            VStack(spacing: 8) {
+              Image(systemName: "photo")
+                .resizable()
+                .scaledToFit()
+                .frame(width: 50, height: 50)
+                .foregroundColor(.gray)
 
-              // Save each image to the Photos library and create WalkImage objects
-              for image in newImages {
-                if let imageData = image.jpegData(compressionQuality: 0.8) {
-                  PHPhotoLibrary.requestAuthorization { status in
-                    guard status == .authorized else {
-                      print("Photo library access not authorized")
-                      return
-                    }
-                    PHPhotoLibrary.shared().performChanges({
-                      let options = PHAssetResourceCreationOptions()
-                      let creationRequest = PHAssetCreationRequest.forAsset()
-                      creationRequest.addResource(with: .photo, data: imageData, options: options)
-                    }, completionHandler: { success, error in
-                      if let error = error {
-                        print("Error saving gallery photo: \(error)")
-                      } else if success {
-                        // Fetch the newest photo
-                        let fetchOptions = PHFetchOptions()
-                        fetchOptions.sortDescriptors = [NSSortDescriptor(key: "creationDate", ascending: false)]
-                        fetchOptions.fetchLimit = 1
-                        let result = PHAsset.fetchAssets(with: .image, options: fetchOptions)
-                        if let asset = result.firstObject {
-                          DispatchQueue.main.async {
-                            let walkImage = WalkImage(
-                              imageType: .gallery, // Keep as .gallery to distinguish from camera photos
-                              localIdentifier: asset.localIdentifier, // This is the key fix
-                              fileURL: nil // Don't need fileURL for Photos library images
-                            )
-                            walk.walkImages.append(walkImage)
-                            // Don't call loadWalkImages() here since we already added to loadedImages
-                            UIImpactFeedbackGenerator(style: .light).impactOccurred()
+              Text("Image missing")
+                .font(.caption)
+                .multilineTextAlignment(.center)
+                .foregroundColor(.secondary)
+            }
+            .frame(width: 100, height: 100)
+            .background(Color.gray.opacity(0.1))
+            .cornerRadius(8)
+          } else {
+            // In WalkDetailView, modify the PhotoGridView usage:
+
+            PhotoGridView(
+              images: loadedImages,
+              onImageDelete: { index in
+                walk.walkImages.remove(at: index)
+                loadedImages.remove(at: index)
+                UIImpactFeedbackGenerator(style: .light).impactOccurred()
+              },
+              onImagesAdded: { newImages in
+                // Add new images to the loaded images array first
+                loadedImages.append(contentsOf: newImages)
+
+                // Save each image to the Photos library and create WalkImage objects
+                for image in newImages {
+                  if let imageData = image.jpegData(compressionQuality: 0.8) {
+                    PHPhotoLibrary.requestAuthorization { status in
+                      guard status == .authorized else {
+                        print("Photo library access not authorized")
+                        return
+                      }
+                      PHPhotoLibrary.shared().performChanges({
+                        let options = PHAssetResourceCreationOptions()
+                        let creationRequest = PHAssetCreationRequest.forAsset()
+                        creationRequest.addResource(with: .photo, data: imageData, options: options)
+                      }, completionHandler: { success, error in
+                        if let error = error {
+                          print("Error saving gallery photo: \(error)")
+                        } else if success {
+                          // Fetch the newest photo
+                          let fetchOptions = PHFetchOptions()
+                          fetchOptions.sortDescriptors = [NSSortDescriptor(key: "creationDate", ascending: false)]
+                          fetchOptions.fetchLimit = 1
+                          let result = PHAsset.fetchAssets(with: .image, options: fetchOptions)
+                          if let asset = result.firstObject {
+                            DispatchQueue.main.async {
+                              let walkImage = WalkImage(
+                                imageType: .gallery, // Keep as .gallery to distinguish from camera photos
+                                localIdentifier: asset.localIdentifier, // This is the key fix
+                                fileURL: nil // Don't need fileURL for Photos library images
+                              )
+                              walk.walkImages.append(walkImage)
+                              // Don't call loadWalkImages() here since we already added to loadedImages
+                              UIImpactFeedbackGenerator(style: .light).impactOccurred()
+                            }
                           }
                         }
-                      }
-                    })
+                      })
+                    }
                   }
                 }
               }
-            }
-          )
+            )
+          }
         }
+        .padding()
+        .background(Color(.systemGray6))
+        .cornerRadius(12)
       }
       .padding()
-      .background(Color(.systemGray6))
-      .cornerRadius(12)
-      Button {
-        shareWalkSnapshot(walk: walk)
-      } label: {
-        Label("Share Walk", systemImage: "square.and.arrow.up")
-          .frame(maxWidth: .infinity)
-      }
-      .buttonStyle(.borderedProminent)
-      .padding(.horizontal, 2.5)
-      //Spacer().frame(height: 60)
+    }.safeAreaInset(edge: .bottom) {
+      Color.clear.frame(height: 80)
     }
-    .padding()
   }
 
   // Common cards
@@ -537,6 +533,15 @@ struct WalkDetailView: View {
           Spacer()
         }
       }
+    }
+  }
+
+  private func saveWalkName(walk: WalkData, newName: String) {
+    walk.name = newName.isEmpty ? nil : newName
+    do {
+      try modelContext.save()
+    } catch {
+      print("Failed to save walk name: \(error)")
     }
   }
 
@@ -777,7 +782,6 @@ struct PhotoGridView: View {
   }
 }
 
-// Make sure you have this struct defined somewhere
 struct SelectedIndex: Identifiable {
   let id: Int
 }
@@ -798,6 +802,7 @@ struct PhotoPagerView: View {
 
   var body: some View {
     ZStack {
+      Color.black.ignoresSafeArea(.all)
       LazyPager(data: images, page: $currentPage) { image in
         Image(uiImage: image)
           .resizable()

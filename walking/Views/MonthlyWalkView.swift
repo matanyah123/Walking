@@ -268,7 +268,7 @@ struct YearlyWalkView: View {
               }
           }
         }
-        .padding([.top, .leading, .trailing])
+        .padding([.leading, .trailing])
         // Month labels
         HStack(alignment: .top, spacing: 3) {
           ForEach(0..<12, id: \.self) { monthIndex in
@@ -328,10 +328,6 @@ struct YearlyWalkView: View {
           }
         }
         .padding(.horizontal)
-        
-        // Legend
-        legendView
-          .padding(.horizontal)
       }
       if showBanner {
         Text(bannerText)
@@ -345,7 +341,11 @@ struct YearlyWalkView: View {
       }
     }
     .safeAreaInset(edge: .bottom) {
-      Color.clear.frame(height: 80)
+      VStack(alignment: .leading){
+        legendView
+          .padding(.horizontal, 35.0)
+        Color.clear.frame(height: 50)
+      }
     }
     .onAppear {
       generateYearlyContributions()
@@ -415,7 +415,7 @@ struct YearlyWalkView: View {
   
   // MARK: - Legend View
   private var legendView: some View {
-    VStack(alignment: .leading, spacing: 8) {
+    VStack(alignment: .leading, spacing: 1) {
       HStack {
         Text("Less")
           .font(.caption2)
@@ -513,7 +513,12 @@ struct YearlyWalkView: View {
     }
   }
 }
-
+#Preview {
+  ContentView()
+    .preferredColorScheme(.dark)
+}
+/*
 #Preview("Yearly View") {
   YearlyWalkView()
 }
+*/

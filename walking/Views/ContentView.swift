@@ -73,6 +73,7 @@ struct ContentView: View {
     ZStack(alignment: .bottom) {
       Group {
         mainTabView()
+          .tint(Color.accentFromSettings)
       }
       EdgeBlur(direction: .bottom, opacity: height/75).frame(height: height).transition(.opacity)
       CustomBottomBar(
