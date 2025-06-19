@@ -17,7 +17,7 @@ struct BackgroundView: View {
       Circle().frame(width: 1000)
         .offset(x: 300, y: -100)
         .foregroundColor(.blue.opacity(0.5))
-      BlurView(style: .systemThickMaterialDark)
+      BlurView(style: .systemThickMaterial)
         .edgesIgnoringSafeArea(.all)
     }
   }

@@ -248,27 +248,6 @@ struct YearlyWalkView: View {
   var body: some View {
     ZStack{
       VStack(alignment: .leading, spacing: 10) {
-        // Header
-        HStack{
-          Image(systemName: "chevron.left")
-            .font(.title3)
-            .fontWeight(.semibold)
-            .onTapGesture {
-              changeYear(by: -1)
-            }
-          Text("Walk Activity - \(String(selectedYear))")
-            .font(.title3)
-            .fontWeight(.semibold)
-          if !isCurrentYear {
-            Image(systemName: "chevron.right")
-              .font(.title3)
-              .fontWeight(.semibold)
-              .onTapGesture {
-                changeYear(by: 1)
-              }
-          }
-        }
-        .padding([.leading, .trailing])
         // Month labels
         HStack(alignment: .top, spacing: 3) {
           ForEach(0..<12, id: \.self) { monthIndex in
@@ -340,6 +319,40 @@ struct YearlyWalkView: View {
           .transition(.opacity.combined(with: .scale))
       }
     }
+    .toolbar {
+      ToolbarItem {
+        Button{
+          changeYear(by: -1)
+        } label: {
+          Image(systemName: "chevron.left")
+            .font(.title3)
+            .fontWeight(.semibold)
+        }
+      }
+		/* MARK: if #available(iOS 26, *) {
+        ToolbarSpacer(.fixed)
+      } */
+      ToolbarItem {
+        Text(" Walk Activity - \(String(selectedYear)) ")
+          .fixedSize(horizontal: true, vertical: false)
+          .font(.title3)
+          .fontWeight(.semibold)
+      }
+		/* MARK: if #available(iOS 26, *) {
+		ToolbarSpacer(.fixed)
+      }*/
+      ToolbarItem {
+        Button{
+          changeYear(by: 1)
+        } label: {
+          Image(systemName: "chevron.right")
+            .font(.title3)
+            .fontWeight(.semibold)
+        }
+        .disabled(isCurrentYear)
+      }
+
+    }
     .safeAreaInset(edge: .bottom) {
       VStack(alignment: .leading){
         legendView
@@ -360,7 +373,7 @@ struct YearlyWalkView: View {
       generateYearlyContributions()
     }
   }
-  
+
   private var isCurrentYear: Bool {
     selectedYear >= Calendar.current.component(.year, from: Date())
   }
@@ -513,12 +526,12 @@ struct YearlyWalkView: View {
     }
   }
 }
+
 #Preview {
   ContentView()
-    .preferredColorScheme(.dark)
 }
 /*
 #Preview("Yearly View") {
-  YearlyWalkView()
+ YearlyWalkView()
 }
 */

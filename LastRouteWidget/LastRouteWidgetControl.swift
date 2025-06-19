@@ -4,10 +4,9 @@
 //
 //  Created by ‏מתניה ‏אליהו on 15/05/2025.
 //
-/*
-import AppIntents
 import SwiftUI
 import WidgetKit
+import AppIntents
 
 struct LastRouteWidgetControl: ControlWidget {
   var body: some ControlWidgetConfiguration {
@@ -39,11 +38,26 @@ extension LastRouteWidgetControl {
 }
 
 struct StartWalkingIntent: AppIntent {
-  static let title: LocalizedStringResource = "Start Walking"
-  
-  func perform() async throws -> some IntentResult {
-    print("Requested walk start")
-    return .result()
-  }
+	static var title: LocalizedStringResource = "Start Walking"
+
+	func perform() async throws -> some IntentResult {
+		// Request choice inside the perform function
+		if #available(iOS 26.0, *) {
+			let choice = try await requestChoice(between: Self.choices, dialog: .init("Select Latte Size")).title
+			print("User selected: \(choice)")
+		} else {
+			print("Requested walk start")
+		}
+
+		return .result()
+	}
+
+	@available(iOS 26.0, *)
+	static var choices: [IntentChoiceOption] {
+		return [
+			IntentChoiceOption(title: "small"),
+			IntentChoiceOption(title: "medium"),
+			IntentChoiceOption(title: "large")
+		]
+	}
 }
-*/

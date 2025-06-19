@@ -34,7 +34,13 @@ struct WalkHistoryView: View {
   @State private var selectedWalkForEditing: WalkData?
   @State private var editingName = ""
 
-  @AppStorage("unit", store: UserDefaults(suiteName: "group.com.matanyah.WalkTracker")) var unit: Bool = true
+  @AppStorage("isPlusUser", store: UserDefaults(suiteName: "group.com.matanyah.WalkTracker")) var unit: Bool = true
+  @AppStorage("unit", store: UserDefaults(suiteName: "group.com.matanyah.WalkTracker")) var isPlusUser: Bool = false
+
+  // Helper to check if this is the most recent walk
+  private func isLastWalk(_ walk: WalkData) -> Bool {
+    return walk.id == walkHistory.first?.id
+  }
 
   var body: some View {
     NavigationStack {
@@ -73,9 +79,14 @@ struct WalkHistoryView: View {
                 }
                 .swipeActions(edge: .leading) {
                   Button {
-                    shareWalkSnapshot(walk: walk)
+                    if isPlusUser {
+                      shareWalkSnapshot(walk: walk)
+                    } else {
+                      InAppNotificationManager.shared.show(message: "The feature is locked, buy Plus to unlock.")
+                    }
                   } label: {
                     Label("Share", systemImage: "square.and.arrow.up")
+                      .tint(isPlusUser ? Color.accentFromSettings : Color.gray)
                   }
                   Button {
                     selectedWalkForEditing = walk
@@ -248,7 +259,6 @@ struct WalkHistoryView: View {
     return isoDate
   }
 }
-
 struct WalkDetailView: View {
   let walk: WalkData
   @Environment(\.modelContext) private var modelContext
@@ -263,8 +273,8 @@ struct WalkDetailView: View {
   @State private var editingName: String = ""
   @State private var showImageSheet = false
   @State private var selectedImage: WalkImage?
-  @AppStorage("darkMode", store: UserDefaults(suiteName: "group.com.matanyah.WalkTracker")) var darkMode: Bool = true
   @AppStorage("unit", store: UserDefaults(suiteName: "group.com.matanyah.WalkTracker")) var unit: Bool = true
+  @AppStorage("isPlusUser", store: UserDefaults(suiteName: "group.com.matanyah.WalkTracker")) var isPlusUser: Bool = true
 
   // Computed property for display name (not @State)
   private var displayName: String {
@@ -295,19 +305,26 @@ struct WalkDetailView: View {
       .navigationTitle(displayName)
       .toolbar {
         ToolbarItem(placement: .topBarTrailing) {
-          HStack{
-            Button {
+          Button {
+            if isPlusUser {
               shareWalkSnapshot(walk: walk)
-            } label: {
-              Image(systemName: "square.and.arrow.up")
-                .foregroundColor(.accentFromSettings)
+            } else {
+              InAppNotificationManager.shared.show(message: "The feature is locked, buy Plus to unlock.")
             }
-            Button {
-              isEditingName = true
-            } label: {
-              Image(systemName: "pencil")
-                .foregroundColor(.accentFromSettings)
-            }
+          } label: {
+            Image(systemName: "square.and.arrow.up")
+              .foregroundColor(.accentFromSettings)
+          }
+        }
+        /*if #available(iOS 26, *) {
+			ToolbarSpacer(.fixed)
+        }*/
+        ToolbarItem(placement: .topBarTrailing) {
+          Button {
+            isEditingName = true
+          } label: {
+            Image(systemName: "pencil")
+              .foregroundColor(.accentFromSettings)
           }
         }
       }
@@ -330,6 +347,7 @@ struct WalkDetailView: View {
             ToolbarItem(placement: .navigationBarTrailing) {
               Button("Save") {
                 saveWalkName(walk: walk, newName: editingName)
+                isEditingName = false
               }
             }
           }
@@ -368,7 +386,6 @@ struct WalkDetailView: View {
           NavigationLink{
             MapView(route: walk.route.map { CLLocation(latitude: $0.latitude, longitude: $0.longitude) }, showUserLocation: false, trackingMode: $trackingMode, showImages: true, images: walk.walkImages, showImageSheet: $showImageSheet, selectedImage: $selectedImage)
               .ignoresSafeArea()
-              .colorScheme(darkMode ? .dark : .light)
               .sheet(isPresented: $showImageSheet) {
                 if let selectedImage = selectedImage,
                    let imageIndex = walk.walkImages.firstIndex(where: { $0.id == selectedImage.id }),
@@ -857,5 +874,4 @@ struct PhotoPagerView: View {
 
 #Preview {
   WalkDetailView(walk: WalkData.dummy)
-    .preferredColorScheme(.light)
 }

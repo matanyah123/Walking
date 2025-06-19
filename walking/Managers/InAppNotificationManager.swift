@@ -20,8 +20,10 @@ class InAppNotificationManager: ObservableObject {
   
   func show(message: String, duration: TimeInterval = 5.0) {
     self.message = message
-    self.isVisible = true
-    
+    withAnimation {
+      self.isVisible = true
+    }
+
     timer?.invalidate()
     timer = Timer.scheduledTimer(withTimeInterval: duration, repeats: false) { _ in
       self.dismiss()

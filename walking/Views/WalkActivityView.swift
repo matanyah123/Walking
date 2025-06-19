@@ -13,6 +13,8 @@ struct WalkActivityView: View {
   @Query(sort: \WalkData.date, order: .reverse) private var walkHistory: [WalkData]
 
   @AppStorage("unit", store: UserDefaults(suiteName: "group.com.matanyah.WalkTracker")) var unit: Bool = true
+  @AppStorage("isPlusUser", store: UserDefaults(suiteName: "group.com.matanyah.WalkTracker")) var isPlusUser: Bool = false
+  @AppStorage("isHighlightLastWalk", store: UserDefaults(suiteName: "group.com.matanyah.WalkTracker")) var isHighlightLastWalk: Bool = false
 
   // Get the last 7 walks sorted by date (most recent first)
   private var recentWalks: [WalkData] {
@@ -40,10 +42,28 @@ struct WalkActivityView: View {
     NavigationStack {
       List {
         Section(header: Text("Activity")) {
-          NavigationLink(destination: YearlyWalkView()) {
+          NavigationLink {
+            if isPlusUser {
+            YearlyWalkView()
+            } else {
+              NavigationLink {
+                PaymentWall()
+              } label: {
+                ContentUnavailableView("You need to upgrade to Plus to view this feature", systemImage: "plus")
+              }
+            }
+          } label: {
             Text("Full Yearly Activity")
           }
-          MonthlyWalkView()
+          if isPlusUser {
+            MonthlyWalkView()
+          } else {
+            NavigationLink {
+              PaymentWall()
+            } label: {
+              ContentUnavailableView("You need to upgrade to Plus to view this feature", systemImage: "plus")
+            }
+          }
         }
         Section(header: Text("History")) {
           NavigationLink(destination: WalkHistoryView()) {
@@ -69,16 +89,13 @@ struct WalkActivityView: View {
                     }
                     .padding(.vertical, 6)
                     .padding(.horizontal)
-                    .background(
-                      (highlightLastWalk && isLastWalk(walk)) ?
-                      RoundedRectangle(cornerRadius: 10)
-                        .fill(Color.accentFromSettings)
-                        .shadow(color: Color.accentFromSettings.opacity(0.6), radius: 10)
-                      : nil
-                    )
-                    .animation(.easeInOut(duration: 0.3), value: highlightLastWalk)
                     .cornerRadius(10)
                   }
+                  .listRowBackground(
+                    isLastWalk(walk) && highlightLastWalk ?
+                    Color.accentFromSettings.opacity(0.3) : nil
+                  )
+                  .animation(.easeInOut, value: highlightLastWalk)
                   .swipeActions(edge: .trailing) {
                     Button(role: .destructive) {
                       walkToDelete = walk
@@ -90,9 +107,14 @@ struct WalkActivityView: View {
                   }
                   .swipeActions(edge: .leading) {
                     Button {
-                      shareWalkSnapshot(walk: walk)
+                      if isPlusUser {
+                        shareWalkSnapshot(walk: walk)
+                      } else {
+                        InAppNotificationManager.shared.show(message: "The feature is locked, buy Plus to unlock.")
+                      }
                     } label: {
                       Label("Share", systemImage: "square.and.arrow.up")
+                        .tint(isPlusUser ? Color.accentFromSettings : Color.gray)
                     }
                     Button {
                       selectedWalkForEditing = walk
@@ -112,57 +134,71 @@ struct WalkActivityView: View {
             )
           }
         }
-        .alert("Are you sure?", isPresented: $showDeleteConfirmation, presenting: walkToDelete) { walk in
-          Button("Delete", role: .destructive) {
-            deleteWalk(walk)
-          }
-          Button("Cancel", role: .cancel) { }
-        } message: { _ in
-          Text("This action cannot be undone.")
-        }
-        .sheet(item: $selectedWalkForEditing) { walk in
-          NavigationView {
-            VStack(spacing: 20) {
-              Text("Edit Walk Name")
-                .font(.title2)
-                .fontWeight(.semibold)
-
-              TextField("Enter a name", text: $editingName)
-                .textFieldStyle(RoundedBorderTextFieldStyle())
-                .padding(.horizontal)
-
-              Spacer()
-            }
-            .padding()
-            .navigationBarTitleDisplayMode(.inline)
-            .toolbar {
-              ToolbarItem(placement: .navigationBarLeading) {
-                Button("Cancel") {
-                  selectedWalkForEditing = nil
-                }
-              }
-              ToolbarItem(placement: .navigationBarTrailing) {
-                Button("Save") {
-                  saveWalkName(walk: walk, newName: editingName)
-                  selectedWalkForEditing = nil
-                }
-              }
-            }
-          }
-        }
       }
       .navigationTitle("Your Activity")
       .safeAreaInset(edge: .bottom) {
         Color.clear.frame(height: 80)
       }
+      .onAppear {
+        //MARK: -
+        if !isHighlightLastWalk {
+          highlightLastWalk = true
+          DispatchQueue.main.asyncAfter(deadline: .now() + 3) {
+            withAnimation(.easeInOut) {
+              highlightLastWalk = false
+            }
+          }
+          isHighlightLastWalk = true
+        }
+      }
+      .onChange(of: isLastOneGlows) {
+        if isLastOneGlows {
+          withAnimation(.easeInOut) {
+            highlightLastWalk = true
+          }
+          DispatchQueue.main.asyncAfter(deadline: .now() + 5) {
+            withAnimation(.easeInOut) {
+              highlightLastWalk = false
+              isLastOneGlows = false
+            }
+          }
+        }
+      }
     }
-    .onChange(of: isLastOneGlows) { newValue in
-      if newValue {
-        highlightLastWalk = true
-        DispatchQueue.main.asyncAfter(deadline: .now() + 5) {
-          withAnimation {
-            highlightLastWalk = false
-            isLastOneGlows = false
+    .alert("Are you sure?", isPresented: $showDeleteConfirmation, presenting: walkToDelete) { walk in
+      Button("Delete", role: .destructive) {
+        deleteWalk(walk)
+      }
+      Button("Cancel", role: .cancel) { }
+    } message: { _ in
+      Text("This action cannot be undone.")
+    }
+    .sheet(item: $selectedWalkForEditing) { walk in
+      NavigationView {
+        VStack(spacing: 20) {
+          Text("Edit Walk Name")
+            .font(.title2)
+            .fontWeight(.semibold)
+
+          TextField("Enter a name", text: $editingName)
+            .textFieldStyle(RoundedBorderTextFieldStyle())
+            .padding(.horizontal)
+
+          Spacer()
+        }
+        .padding()
+        .navigationBarTitleDisplayMode(.inline)
+        .toolbar {
+          ToolbarItem(placement: .navigationBarLeading) {
+            Button("Cancel") {
+              selectedWalkForEditing = nil
+            }
+          }
+          ToolbarItem(placement: .navigationBarTrailing) {
+            Button("Save") {
+              saveWalkName(walk: walk, newName: editingName)
+              selectedWalkForEditing = nil
+            }
           }
         }
       }
@@ -243,7 +279,6 @@ struct WalkActivityView: View {
     }
   }
 }
-
 #Preview {
   @Previewable @State var isLastOneGlows: Bool = true
   WalkActivityView(isLastOneGlows: $isLastOneGlows)

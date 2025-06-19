@@ -15,7 +15,7 @@ class SharedDataContainer {
     private let appGroupID = "group.com.matanyah.WalkTracker"
     
     lazy var container: ModelContainer = {
-        let schema = Schema([WalkData.self])
+		let schema = Schema([WalkData.self])
         let configuration = ModelConfiguration(
             schema: schema,
             url: containerURL,

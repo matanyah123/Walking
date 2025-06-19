@@ -24,10 +24,9 @@ struct SettingsView: View {
   @Binding var doYouNeedAGoal: Bool
   @State private var showingColorPresets = false
   @State private var showingIconPresets = false
-  @AppStorage(SharedKeys.goalTarget, store: UserDefaults(suiteName: "group.com.matanyah.WalkTracker")) var goalTarget = 5000
-  @AppStorage("notificationsEnabled", store: UserDefaults(suiteName: "group.com.matanyah.WalkTracker")) private var notificationsEnabled: Bool = true
+  @AppStorage(SharedKeys.goalTarget, store: UserDefaults(suiteName: "group.com.matanyah.WalkTracker")) var goalTarget = 5000.0
+  @AppStorage("isPlusUser", store: UserDefaults(suiteName: "group.com.matanyah.WalkTracker")) private var isPlusUser: Bool = false
   @AppStorage("active_icon", store: UserDefaults(suiteName: "group.com.matanyah.WalkTracker")) private var activeAppIcon: String = "AppIcon"
-  @AppStorage("darkMode", store: UserDefaults(suiteName: "group.com.matanyah.WalkTracker")) private var darkMode: Bool = true
   @AppStorage("unit", store: UserDefaults(suiteName: "group.com.matanyah.WalkTracker")) private var unit: Bool = true
   @AppStorage("accentColor", store: UserDefaults(suiteName: "group.com.matanyah.WalkTracker")) private var storedColorData: Data = {
     try! JSONEncoder().encode(CodableColor.lavenderBlue) // Default to Lavender Blue 💜
@@ -75,27 +74,30 @@ struct SettingsView: View {
   private var currentIconDisplayName: String {
     switch activeAppIcon {
     case "AppIcon":
-      return darkMode ? "Default (white)" : "Default (white)"
+      return "Default (white)"
     case "AppIcon-Blue":
-      return darkMode ? "Lavender Blue" : "Lavender Blue"
+      return "Lavender Blue"
     case "AppIcon-Mint":
-      return darkMode ? "Turquoise Mint" : "Turquoise Mint"
+      return "Turquoise Mint"
     case "AppIcon-Orange":
-      return darkMode ? "Vibrant Orange" : "Vibrant Orange"
+      return "Vibrant Orange"
     case "AppIcon-Green":
-      return darkMode ? "Lime Green" : "Lime Green"
+      return "Lime Green"
     default:
-      return darkMode ?  "Default (white)" :"Default (white)"
+      return "Default (white)"
     }
   }
 
   var body: some View {
     NavigationStack {
       List {
-
-        Section(header: Text("Payment Wall")) {
-          NavigationLink("View Paywall") {
+        if !isPlusUser {
+          NavigationLink{
             PaymentWall()
+          }label: {
+            Text("Go Plus +")
+              .font(.largeTitle)
+              .bold()
           }
         }
 
@@ -111,9 +113,14 @@ struct SettingsView: View {
           }
 
           if doYouNeedAGoal {
-            Stepper(value: $goalTarget, in: 1000...20000, step: 500) {
+            Stepper(value: $goalTarget, in: 1000...50000, step: 500) {
               VStack(alignment: .leading) {
-                Text("Default Goal: \(goalTarget.formatted(.number)) meter")
+                let displayValue = unit ? (goalTarget / 1000) : (goalTarget * 0.000621371)
+                let unitLabel = unit ? "km" : "mi"
+
+                Text("Default Goal: \(displayValue.formatted(.number)) \(unitLabel)")
+                  .contentTransition(.numericText(value: goalTarget))
+
                 Text("Starting target for your daily walks")
                   .font(.caption)
                   .foregroundColor(.secondary)
@@ -127,17 +134,23 @@ struct SettingsView: View {
           Button{
             showingColorPresets.toggle()
           }label: {
-            ColorPicker("Choose Preset Colors", selection: Binding(
+            ColorPicker("Choose Colors", selection: Binding(
               get: { accentColor },
               set: { saveAccentColor($0) }
-            ), supportsOpacity: false)
-            .colorScheme(darkMode ? .dark : .light)
+            ), supportsOpacity: false).disabled(!isPlusUser)
           }
           .sheet(isPresented: $showingColorPresets) {
+            if isPlusUser {
             PresetColorsView(selectColor: savePresetColor)
               .presentationDetents([.medium ,.large])
               .presentationDragIndicator(.visible)
-              .colorScheme(darkMode ? .dark : .light)
+            } else {
+              NavigationLink {
+                PaymentWall()
+              } label: {
+                ContentUnavailableView("You need to upgrade to Plus to view this feature", systemImage: "plus")
+              }
+            }
           }
 
           Button{
@@ -162,13 +175,17 @@ struct SettingsView: View {
             }
           }
           .sheet(isPresented: $showingIconPresets) {
+            if isPlusUser {
             AppIconPickerView(activeAppIcon: $activeAppIcon)
               .presentationDetents([.medium ,.large])
               .presentationDragIndicator(.visible)
-              .colorScheme(darkMode ? .dark : .light)
-          }
-          Toggle(isOn: $darkMode) {
-            Text("Dark Mode")
+            } else {
+              NavigationLink {
+                PaymentWall()
+              } label: {
+                ContentUnavailableView("You need to upgrade to Plus to view this feature", systemImage: "plus")
+              }
+            }
           }
         }
 
@@ -184,7 +201,10 @@ struct SettingsView: View {
         Section(
           header: Text("Additional Settings")
         ) {
-          //Toggle("Enable Notifications", isOn: $notificationsEnabled)
+          Toggle("Enable Plus", isOn: $isPlusUser)
+            .onChange(of: isPlusUser) {
+                WidgetCenter.shared.reloadAllTimelines()
+            }
 
           NavigationLink(destination: AboutView()) {
             Label("About This App", systemImage: "info.circle")
@@ -229,8 +249,10 @@ struct PresetColorsView: View {
   @State private var showDeleteAlert = false
 
   @State private var editingColor: CodableColor?
-  @State private var editingName: String = ""
-  @State private var showEditNameSheet = false
+  @State private var editingColorName: String = ""
+  @State private var showEditNameSheet: Bool = false
+
+  @State private var selectedColor: CodableColor?
 
   private let presets: [(name: String, color: CodableColor)] = [
     ("Lavender Blue", CodableColor.lavenderBlue),
@@ -264,59 +286,85 @@ struct PresetColorsView: View {
     saveColors()
   }
 
+  private let columns = [
+    GridItem(.adaptive(minimum: 100), spacing: 20)
+  ]
+
   var body: some View {
     NavigationStack {
-      List {
-        Section(header: Text("Presets")) {
-          ForEach(presets, id: \.name) { preset in
-            Button {
-              selectColor(preset.color)
-              dismiss()
-            } label: {
-              HStack {
-                Text(preset.name)
-                Spacer()
-                Circle()
+      ScrollView {
+        LazyVGrid(columns: columns, spacing: 20) {
+          // Preset colors
+          Section(header: Text("Preset Colors")) {
+            ForEach(presets, id: \.name) { preset in
+              VStack(spacing: 8) {
+                RoundedRectangle(cornerRadius: 18, style: .continuous)
                   .fill(preset.color.color)
-                  .frame(width: 24, height: 24)
+                  .frame(width: 80, height: 80)
+                  .overlay(
+                    RoundedRectangle(cornerRadius: 18, style: .continuous)
+                      .stroke(
+                        selectedColor == preset.color ? Color.accentFromSettings : Color.clear,
+                        lineWidth: 3
+                      )
+                  )
+                  .shadow(color: .black.opacity(0.15), radius: 8, x: 0, y: 4)
+                  .onTapGesture {
+                    selectedColor = preset.color
+                    selectColor(preset.color)
+                    dismiss()
+                  }
+                Text(preset.name)
+                  .font(.caption)
+                  .fontWeight(selectedColor == preset.color ? .semibold : .regular)
+                  .multilineTextAlignment(.center)
+                  .foregroundColor(selectedColor == preset.color ? .accentFromSettings : .primary)
               }
             }
-            .buttonStyle(BorderlessButtonStyle())
           }
-        }
 
-        if !customColors.isEmpty {
-          Section(header: Text("Custom Colors")) {
-            ForEach(customColors, id: \.self) { color in
-              Button {
-                selectColor(color)
-                dismiss()
-              } label: {
-                HStack {
-                  Text(color.name ?? "Custom")
-                  Spacer()
-                  Circle()
+          // Custom colors section
+          if !customColors.isEmpty {
+            Section(header: Text("Custom Colors")) {
+              ForEach(customColors, id: \.self) { color in
+                VStack(spacing: 8) {
+                  RoundedRectangle(cornerRadius: 18, style: .continuous)
                     .fill(color.color)
-                    .frame(width: 24, height: 24)
+                    .frame(width: 80, height: 80)
+                    .overlay(
+                      RoundedRectangle(cornerRadius: 18, style: .continuous)
+                        .stroke(
+                          selectedColor == color ? Color.accentFromSettings : Color.clear,
+                          lineWidth: 3
+                        )
+                    )
+                    .shadow(color: .black.opacity(0.15), radius: 8, x: 0, y: 4)
+                    .onTapGesture {
+                      selectedColor = color
+                      selectColor(color)
+                      dismiss()
+                    }
+                    .onLongPressGesture {
+                      editingColor = color
+                      editingColorName = color.name ?? ""
+                      showEditNameSheet = true
+                    }
+                  Text(color.name ?? "Custom")
+                    .font(.caption)
+                    .fontWeight(selectedColor == color ? .semibold : .regular)
+                    .multilineTextAlignment(.center)
+                    .foregroundColor(selectedColor == color ? .accentFromSettings : .primary)
                 }
-              }
-              .buttonStyle(BorderlessButtonStyle())
-              .swipeActions(edge: .leading, allowsFullSwipe: true) {
-                Button("Edit") {
-                  editingColor = color
-                  editingName = color.name ?? ""
-                  showEditNameSheet = true
-                }
-                .tint(.blue)
               }
             }
-            .onDelete(perform: deleteColor)
           }
         }
+        .padding(.horizontal, 20)
+        .padding(.top, 20)
       }
-      .navigationTitle("Choose Preset")
+      .navigationTitle("Choose Color")
       .toolbar {
-        ToolbarItem(placement: .navigationBarTrailing) {
+        ToolbarItem(placement: .navigationBarLeading) {
           HStack {
             ColorPicker("Create New Color", selection: $newColor, supportsOpacity: false)
               .labelsHidden()
@@ -344,19 +392,24 @@ struct PresetColorsView: View {
             }
           }
         }
+        ToolbarItem(placement: .navigationBarTrailing) {
+          Button("Done") {
+            dismiss()
+          }
+        }
       }
       .onAppear(perform: loadSavedColors)
       .sheet(isPresented: $showEditNameSheet) {
         NavigationStack {
           Form {
-            TextField("New name", text: $editingName)
+            TextField("New name", text: $editingColorName)
           }
           .navigationTitle("Edit Name")
           .toolbar {
             ToolbarItem(placement: .confirmationAction) {
               Button("Save") {
                 if let index = customColors.firstIndex(of: editingColor ?? CodableColor(.clear)) {
-                  customColors[index].name = editingName
+                  customColors[index].name = editingColorName
                   saveColors()
                 }
                 showEditNameSheet = false
@@ -381,7 +434,6 @@ struct PresetColorsView: View {
 struct AppIconPickerView: View {
   @Binding var activeAppIcon: String
   @Environment(\.dismiss) var dismiss
-  @AppStorage("darkMode", store: UserDefaults(suiteName: "group.com.matanyah.WalkTracker")) var darkMode: Bool = true
 
   private var icons: [AppIcon] {
     [
@@ -414,12 +466,11 @@ struct AppIconPickerView: View {
                   .overlay(
                     RoundedRectangle(cornerRadius: 18, style: .continuous)
                       .stroke(
-                        activeAppIcon == icon.name ? Color.accentColor : Color.clear,
-                        lineWidth: 3
+                        activeAppIcon == icon.name ? Color.accentFromSettings : Color.clear,
+                        lineWidth: 2
                       )
                   )
                   .shadow(color: .black.opacity(0.15), radius: 8, x: 0, y: 4)
-                  .scaleEffect(activeAppIcon == icon.name ? 1.05 : 1.0)
                   .animation(.easeInOut(duration: 0.2), value: activeAppIcon)
               }
               .buttonStyle(PlainButtonStyle())
@@ -428,7 +479,7 @@ struct AppIconPickerView: View {
                 .font(.caption)
                 .fontWeight(activeAppIcon == icon.name ? .semibold : .regular)
                 .multilineTextAlignment(.center)
-                .foregroundColor(activeAppIcon == icon.name ? .accentColor : .primary)
+                .foregroundColor(activeAppIcon == icon.name ? .accentFromSettings : .primary)
                 .animation(.easeInOut(duration: 0.2), value: activeAppIcon)
             }
           }
@@ -437,7 +488,6 @@ struct AppIconPickerView: View {
         .padding(.top, 20)
       }
       .navigationTitle("Choose App Icon")
-      .navigationBarTitleDisplayMode(.inline)
       .toolbar {
         ToolbarItem(placement: .navigationBarTrailing) {
           Button("Done") {
@@ -590,14 +640,11 @@ struct ThanksView: View {
 #Preview {
   @State var deepLink: String?
   ContentView(deepLink: $deepLink)
-    .preferredColorScheme(.dark)
 }
 */
 // MARK: - Preview
 #Preview("Settings View") {
-  @Previewable @State var doYouNeedAGoal: Bool = false
-  SettingsView(doYouNeedAGoal: $doYouNeedAGoal)
-    .preferredColorScheme(.light)
+  SettingsView(doYouNeedAGoal: .constant(false))
 }
  /*
 #Preview("Preset Colors") {

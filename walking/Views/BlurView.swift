@@ -103,15 +103,14 @@ extension View {
     Circle().frame(width: 1000)
       .offset(x: 300, y: -100)
       .foregroundColor(.pink)
-    BlurView(style: .systemMaterialDark)
-      .frame(width: 300, height: 700)
-      .cornerRadius(50)
-      .innerShadow(radius: 50)
+      BlurView(style: .systemThickMaterial)
+        .frame(width: 300, height: 700)
+        .cornerRadius(50)
+        .innerShadow(radius: 50)
     VStack{
       Text("SwiftUI Chromatic ✨")
         .font(.system(size: 26, weight: .bold))
         .chromaticAberration(radius: 0.5, offset: 3.5, isOn: true)
     }
   }
-  .preferredColorScheme(.dark)
 }

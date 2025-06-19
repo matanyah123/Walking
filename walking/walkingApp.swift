@@ -38,7 +38,6 @@ struct walkingApp: App {
 
 #Preview {
   ContentView()
-    .preferredColorScheme(.dark)
 }
 
 class AppTheme: ObservableObject {

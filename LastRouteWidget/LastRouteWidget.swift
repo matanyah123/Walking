@@ -65,92 +65,114 @@ struct WalkProvider: @preconcurrency AppIntentTimelineProvider {
 struct LastRouteWidgetEntryView: View {
   var entry: WalkEntry
   @Environment(\.widgetFamily) var widgetFamily
+  @Environment(\.widgetRenderingMode) private var renderingMode
+  @Environment(\.colorScheme) private var colorScheme
+
   @AppStorage("unit", store: UserDefaults(suiteName: "group.com.matanyah.WalkTracker")) var unit: Bool = true
+  @AppStorage("isPlusUser", store: UserDefaults(suiteName: "group.com.matanyah.WalkTracker")) private var isPlusUser: Bool = false
 
-  var body: some View {
-    let route = (entry.walk?.route ?? []).map {
-      CLLocation(latitude: $0.latitude, longitude: $0.longitude)
-    }
-    ZStack {
-      let Route = Canvas { context, size in
-        let path = createPath(from: route, in: size)
-        context.stroke(
-          path,
-          with: .color((widgetFamily == .systemSmall ? .black.opacity(0.2) : .white.opacity(0.85))),
-          style: StrokeStyle(lineWidth: (widgetFamily == .systemSmall ? 8 : 5), lineCap: .round, lineJoin: .round)
-        )
-      }
-        .aspectRatio(1, contentMode: .fit)
-        .padding(10)
+	var body: some View {
+		if isPlusUser {
+			let route = (entry.walk?.route ?? []).map {
+				CLLocation(latitude: $0.latitude, longitude: $0.longitude)
+			}
+			ZStack {
+				let Route = Canvas { context, size in
+					let path = createPath(from: route, in: size)
+					context.stroke(
+						path,
+						with: .color((widgetFamily == .systemSmall ? .black.opacity(0.2) : .white.opacity(0.85))),
+						style: StrokeStyle(lineWidth: (widgetFamily == .systemSmall ? 8 : 5), lineCap: .round, lineJoin: .round)
+					)
+				}
+					.aspectRatio(1, contentMode: .fit)
+					.padding(10)
 
-      if (widgetFamily == .systemSmall || widgetFamily == .systemMedium || widgetFamily == .systemLarge || widgetFamily == .systemExtraLarge) {
-        LinearGradient(
-          gradient: Gradient(colors: [Color.green.opacity(0.8), Color.orange.opacity(0.6)]),
-          startPoint: .topLeading,
-          endPoint: .bottomTrailing
-        ).colorInvert()
-      }
+				if (widgetFamily == .systemSmall || widgetFamily == .systemMedium || widgetFamily == .systemLarge || widgetFamily == .systemExtraLarge) {
+					if renderingMode != .accented {
+						LinearGradient(
+							gradient: Gradient(colors: [Color.green.opacity(0.8), Color.orange.opacity(0.6)]),
+							startPoint: .topLeading,
+							endPoint: .bottomTrailing
+						).colorInvert()
+					}
+				}
 
-      switch widgetFamily {
-      case .systemMedium:
-        HStack {
-          mainWalkInfo.shadow(radius: 10)
-          Spacer()
-          Route.shadow(radius: 10)
-          Spacer()
-        }
-        .padding(16)
+				switch widgetFamily {
+				case .systemMedium:
+					HStack {
+						mainWalkInfo.shadow(radius: 10)
+						Spacer()
+						Route.shadow(radius: 10)
+						Spacer()
+					}
+					.padding(16)
 
-      case .systemLarge:
-        VStack(alignment: .leading, spacing: 16) {
+				case .systemLarge:
+					VStack(alignment: .leading, spacing: 16) {
 
-          HStack(alignment: .top, spacing: 16) {
-            mainWalkInfo.shadow(radius: 10)
-            Spacer()
-            Route.shadow(radius: 10)
-            Spacer()
-          }
-          .frame(maxHeight: 135)
+						HStack(alignment: .top, spacing: 16) {
+							mainWalkInfo.shadow(radius: 10)
+							Spacer()
+							Route.shadow(radius: 10)
+							Spacer()
+						}
+						.frame(maxHeight: 135)
 
-          Spacer(minLength: 24)
+						Spacer(minLength: 24)
 
-          HStack {
-            Spacer()
-            Text("Great Job!\nKeep walking")
-              .font(.largeTitle.bold())
-              .multilineTextAlignment(.center)
-            Spacer()
-          }
+						HStack {
+							Spacer()
+							Text("Great Job!\nKeep walking")
+								.font(.largeTitle.bold())
+								.multilineTextAlignment(.center)
+							Spacer()
+						}
 
-          Spacer()
-        }
-        .padding(16)
+						Spacer()
+					}
+					.padding(16)
 
-      case .accessoryInline:
-        HStack{
-          Image(systemName: "shoeprints.fill").padding(5)
-          smallWalkInfo
-        }
-      case .accessoryCircular:
-        VStack{
-          circularWalkInfo
-        }
-      case .accessoryRectangular:
-        HStack{
-          rectangularWalkInfo
-        }.padding()
-      default:
-        ZStack{
-          Route
-          mainWalkInfo.shadow(radius: 10)
-        }
-        .padding(16)
-      }
-    }
-    .padding(-17)
-    .widgetURL(URL(string: "walktracker://open"))
-    .containerBackground(.clear, for: .widget)
-  }
+				case .accessoryInline:
+					HStack{
+						Image(systemName: "shoeprints.fill").padding(5)
+						smallWalkInfo
+					}
+				case .accessoryCircular:
+					VStack{
+						circularWalkInfo
+					}
+				case .accessoryRectangular:
+					HStack{
+						rectangularWalkInfo
+					}.padding()
+				default:
+					ZStack{
+						Route
+						mainWalkInfo.shadow(radius: 10)
+					}
+					.padding(16)
+				}
+			}
+			.padding(-20)
+			.widgetURL(URL(string: "walktracker://open"))
+			.containerBackground(.clear, for: .widget)
+		} else {
+			ZStack{
+				if renderingMode != .accented {
+					LinearGradient(
+						gradient: Gradient(colors: [Color.green.opacity(0.8), Color.orange.opacity(0.6)]),
+						startPoint: .topLeading,
+						endPoint: .bottomTrailing
+					).colorInvert().ignoresSafeArea(.all).padding(-17)
+				}
+				Text("You need to buy Walking Plus to nsee this widget")
+					.tint(Color.primary)
+			}
+			.widgetURL(URL(string: "walktracker://open"))
+			.containerBackground(.clear, for: .widget)
+		}
+	}
 
   private var smallWalkInfo: some View {
     return ZStack() {
@@ -393,6 +415,5 @@ struct LastRouteWidget_Previews: PreviewProvider {
       walk: WalkData.dummy, goalTarget: 5000, configuration: WalkSelectionIntent()
     ))
     .previewContext(WidgetPreviewContext(family: .systemMedium))
-    .preferredColorScheme(.dark)
   }
 }

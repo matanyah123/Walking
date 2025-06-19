@@ -63,13 +63,12 @@ struct Sharedview: View {
   @State private var showImageSheet = false
   @State private var selectedImage: WalkImage?
 
-  @AppStorage("darkMode", store: UserDefaults(suiteName: "group.com.matanyah.WalkTracker")) var darkMode: Bool = true
   @AppStorage("unit", store: UserDefaults(suiteName: "group.com.matanyah.WalkTracker")) var unit: Bool = true
   var body: some View {
     ZStack {
       MapView(route: walk.route.map { CLLocation(latitude: $0.latitude, longitude: $0.longitude) }, showUserLocation: false, trackingMode: $trackingMode, showImageSheet: $showImageSheet, selectedImage: $selectedImage)
         .ignoresSafeArea(.all)
-      BlurView(style: darkMode ? .systemUltraThinMaterialDark : .systemThinMaterialLight).ignoresSafeArea(.all)
+      BlurView(style: .systemUltraThinMaterial).ignoresSafeArea(.all)
       VStack(alignment: .leading) {
         // Distance and Time
         HStack(alignment: .bottom) {
@@ -144,7 +143,6 @@ struct Sharedview: View {
       }
       .padding()
     }
-    .colorScheme(darkMode ? .dark : .light)
   }
 
   private var formattedDate: String {

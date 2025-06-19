@@ -29,10 +29,10 @@ struct InAppBanner: View {
               .padding(.trailing)
           }
         }
-        .background(BlurView(style: .systemUltraThinMaterialDark).innerShadow(radius: 10))
+        .background(BlurView(style: .systemUltraThinMaterial).innerShadow(radius: 10))
         .cornerRadius(10)
         .padding(.horizontal)
-        .padding(.top, 50) // for status bar
+        .padding(.top, 75) // for status bar
         .onTapGesture {
           viewModel.isSearchActive = false
           viewModel.selectedTab = .walk
@@ -43,5 +43,18 @@ struct InAppBanner: View {
       .transition(.move(edge: .top).combined(with: .opacity))
       .animation(.spring(), value: manager.isVisible)
     }
+  }
+}
+
+#Preview {
+  @ObservedObject var manager = InAppNotificationManager.shared
+  ZStack {
+    Button {
+      InAppNotificationManager.shared.show(message: "❤️‍🔥I AM A SEXY GIRL🫦")
+    } label: {
+      Text("Show InAppBanner")
+    }
+
+    InAppBanner(manager: manager)
   }
 }

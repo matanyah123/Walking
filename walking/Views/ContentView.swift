@@ -12,7 +12,7 @@ import UIKit
 import Combine
 
 enum Tab {
-  case home, walk, settings
+  case home, walk, settings, search
 }
 
 class ContentViewModel: ObservableObject {
@@ -48,8 +48,7 @@ class ContentViewModel: ObservableObject {
   }
   
   @AppStorage("doYouNeedAGoal") var doYouNeedAGoal: Bool = false
-  @AppStorage("darkMode", store: UserDefaults(suiteName: "group.com.matanyah.WalkTracker")) var darkMode: Bool = true
-  
+  @AppStorage("isPlusUser", store: UserDefaults(suiteName: "group.com.matanyah.WalkTracker")) var isPlusUser: Bool = false
   @AppStorage(SharedKeys.currentGoalOverride, store: .shared)var goalTarget: Int = 5000
 }
 
@@ -75,23 +74,36 @@ struct ContentView: View {
         mainTabView()
           .tint(Color.accentFromSettings)
       }
-      EdgeBlur(direction: .bottom, opacity: height/75).frame(height: height).transition(.opacity)
-      CustomBottomBar(
-        started: $viewModel.started,
-        tracking: $viewModel.tracking,
-        doYouNeedAGoal: $viewModel.doYouNeedAGoal,
-        goal: $viewModel.goal,
-        goalTarget: viewModel.goalTarget, isSearchActive: $viewModel.isSearchActive,
-        selectedTab: $viewModel.selectedTab,
-        locationManager: locationManager,
-        motionManager: motionManager,
-        liveActivityManager: liveActivityManager, cameraModel: cameraModel,
-        trackingMode: $viewModel.trackingMode
-      )
-      .padding(.bottom)
+      .safeAreaInset(edge: .bottom) {
+        ZStack (alignment: .bottom){
+          EdgeBlur(direction: .bottom, opacity: height/75).frame(height: height).transition(.opacity)
+          CustomBottomBar(
+            started: $viewModel.started,
+            tracking: $viewModel.tracking,
+            doYouNeedAGoal: $viewModel.doYouNeedAGoal,
+            goal: $viewModel.goal,
+            goalTarget: viewModel.goalTarget, isSearchActive: $viewModel.isSearchActive,
+            selectedTab: $viewModel.selectedTab,
+            locationManager: locationManager,
+            motionManager: motionManager,
+            liveActivityManager: liveActivityManager, cameraModel: cameraModel,
+            trackingMode: $viewModel.trackingMode
+          )
+          .sheet(isPresented: $viewModel.isPaymentWallShown){
+            PaymentWall()
+          }
+          .onAppear {
+            if !viewModel.isPlusUser && !viewModel.started {
+              viewModel.isPaymentWallShown = true
+            }
+          }
+        }
+        .padding(.bottom, 5)
+      }
+      .ignoresSafeArea(.container)
       InAppBanner()
+        .ignoresSafeArea(.all)
     }
-    .ignoresSafeArea(.container)
     .onReceive(NotificationCenter.default.publisher(for: UIResponder.keyboardWillShowNotification)) { notification in
       if !viewModel.isKeyboardVisible {
         viewModel.isKeyboardVisible = true
@@ -121,11 +133,7 @@ struct ContentView: View {
       }
     }
     .onAppear {
-      // MARK: - viewModel.isPaymentWallShown = true
       WidgetCenter.shared.reloadAllTimelines()
-    }
-    .sheet(isPresented: $viewModel.isPaymentWallShown){
-      PaymentWall()
     }
   }
 
@@ -137,11 +145,12 @@ struct ContentView: View {
         homeTabView()
       case .walk:
         WalkActivityView(isLastOneGlows: $viewModel.isLastOneGlows)
-          .colorScheme(viewModel.darkMode ? .dark : .light)
       case .settings:
         SettingsView(doYouNeedAGoal: $viewModel.doYouNeedAGoal)
-          .colorScheme(viewModel.darkMode ? .dark : .light)
-      }
+	  case .search:
+		  SearchView(started: .constant(false), selectedTab: .constant(.search))
+			  .modelContainer(for: GoalHistory.self)
+	  }
     }
   }
 
@@ -151,7 +160,6 @@ struct ContentView: View {
       MapView(route: locationManager.route,
               currentLocation: locationManager.currentLocation,
               showUserLocation: true, trackingMode: $viewModel.trackingMode, showImageSheet: $viewModel.showImageSheet, selectedImage: $viewModel.selectedImage)
-      .colorScheme(viewModel.darkMode ? .dark : .light)
       .ignoresSafeArea()
       .onTapGesture {
         UIApplication.shared.dismissKeyboard()
@@ -183,7 +191,7 @@ struct ContentView: View {
             Spacer()
           }
         }
-        if viewModel.tracking {
+        if viewModel.started {
           HStack{
             Button{
               withAnimation(.easeInOut(duration: 0.09)) {
@@ -193,7 +201,9 @@ struct ContentView: View {
               Image(systemName: "camera.fill")
                 .foregroundColor(.white)
                 .padding()
-                .background(BlurView(style: .systemUltraThinMaterialDark).cornerRadius(10).innerShadow(radius: 10))
+                .background(BlurView(style: .systemUltraThinMaterial)
+                  .cornerRadius(10)
+                  .innerShadow(radius: 10))
             }
             Spacer()
           }
@@ -204,7 +214,6 @@ struct ContentView: View {
       .sheet(isPresented: $liveActions.openCamera) {
         CameraView(
           cameraModel: cameraModel,
-          darkMode: viewModel.darkMode,
           selectedDetent: $viewModel.selectedDetent
         )
         .presentationDetents(cameraModel.capturedPhotos.isEmpty ? [.medium] : [.medium ,.large], selection: $viewModel.selectedDetent)
@@ -227,7 +236,6 @@ struct ContentView: View {
 
 #Preview {
   ContentView()
-    .preferredColorScheme(.dark)
 }
 
 // MARK: - Extensions

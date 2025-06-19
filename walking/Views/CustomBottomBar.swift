@@ -28,14 +28,18 @@ struct CustomBottomBar: View {
   @Query var savedWalks: [WalkData]
   @State private var timer: Timer? = nil
   @State private var showDeleteConfirmation = false
+  @State private var isSmallPaymentWallShown = false
+  @State private var smallPaymentWallCount = false
+  @State private var selectedDetent: PresentationDetent = .medium
   @Binding var trackingMode: Int
   @AppStorage("unit", store: UserDefaults(suiteName: "group.com.matanyah.WalkTracker")) var unit: Bool = true
+  @AppStorage("isHighlightLastWalk", store: UserDefaults(suiteName: "group.com.matanyah.WalkTracker")) var isHighlightLastWalk: Bool = false
 
   var body: some View {
     HStack(spacing: 10) {
       navigationBar
 
-      if selectedTab == .home {
+      if selectedTab == .home || selectedTab == .search {
         actionButton
       }
     }
@@ -98,7 +102,7 @@ struct CustomBottomBar: View {
   }
 
   private var backButton: some View {
-    Image(systemName: "chevron.left")
+    Image(systemName: "house.fill")
       .font(.system(size: 20, weight: .bold))
       .foregroundColor(.white.opacity(0.75))
   }
@@ -260,6 +264,10 @@ struct CustomBottomBar: View {
         }
       }
     }
+    .sheet(isPresented: $isSmallPaymentWallShown){
+      SmallPaymentWall(selectedDetent: $selectedDetent)
+        .presentationDetents([selectedDetent])
+    }
   }
 
   // MARK: - Actions
@@ -288,12 +296,16 @@ struct CustomBottomBar: View {
   }
 
   private func handleActionButtonTap() {
-    DispatchQueue.main.asyncAfter(deadline: .now() + 0.2) {
-      UIImpactFeedbackGenerator(style: .soft).impactOccurred()
-    }
-    withAnimation(.easeInOut.speed(2.5)) {
-      isSearchActive.toggle()
-    }
+	  if #available(iOS 26, *) {
+		  selectedTab = .search
+	  } else {
+		  DispatchQueue.main.asyncAfter(deadline: .now() + 0.2) {
+			  UIImpactFeedbackGenerator(style: .soft).impactOccurred()
+		  }
+		  withAnimation(.easeInOut.speed(2.5)) {
+			  isSearchActive.toggle()
+		  }
+	  }
   }
 
   private func toggleTracking() {
@@ -303,6 +315,14 @@ struct CustomBottomBar: View {
       // Currently tracking -> pause
       locationManager.pauseTracking()
       motionManager.stopTracking()
+      if !ContentViewModel.shared.isPlusUser {
+        if smallPaymentWallCount {
+          isSmallPaymentWallShown.toggle()
+          smallPaymentWallCount = false
+        } else {
+          smallPaymentWallCount = true
+        }
+      }
     } else if locationManager.isPaused {
       // Currently paused -> resume
       locationManager.resumeTracking()
@@ -353,7 +373,6 @@ struct CustomBottomBar: View {
   }
 
   private func finishTracking() {
-    InAppNotificationManager.shared.show(message: "Walk has been saved.\nYou can view it in the app history.\nGood job!")
     locationManager.stopTracking()
     motionManager.stopTracking()
     saveData()
@@ -367,6 +386,7 @@ struct CustomBottomBar: View {
   }
 
   private func saveData() {
+    isHighlightLastWalk = false
     guard let startTime = locationManager.startTime, let endTime = locationManager.endTime else {
       return
     }
@@ -389,8 +409,10 @@ struct CustomBottomBar: View {
     do {
       try modelContext.save()
       print("✅ Walk saved with SwiftData and \(cameraModel.capturedPhotos.count) photos")
+      InAppNotificationManager.shared.show(message: "Walk has been saved.\nYou can view it in the app history.\nGood job!")
     } catch {
       print("❌ Error saving walk: \(error)")
+      InAppNotificationManager.shared.show(message: "Sorry... Error saving walk: \(error)")
     }
 
     // ✅ Still save the latest walk for the widget
@@ -443,5 +465,4 @@ struct TabIcon: View {
 
 #Preview {
   ContentView()
-    .preferredColorScheme(.dark)
 }

@@ -11,7 +11,6 @@ import SwiftUI
 
 struct CameraView: View {
   @ObservedObject var cameraModel: CameraModel
-  let darkMode: Bool
   @Binding var selectedDetent: PresentationDetent
   @Environment(\.dismiss) private var dismiss
 
@@ -149,12 +148,11 @@ struct PhotoView: View {
 #Preview {
   @Previewable @State var deepLink: String?
   ContentView()
-    .preferredColorScheme(.dark)
 }
 /*
 #Preview {
   let cameraModel = CameraModel()
   let selectedDetent = Binding.constant(PresentationDetent.medium)
-  return CameraView(cameraModel: cameraModel, darkMode: true, selectedDetent: selectedDetent)
+  return CameraView(cameraModel: cameraModel, selectedDetent: selectedDetent)
 }
 */

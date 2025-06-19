@@ -13,6 +13,7 @@ import ActivityKit
 
 // MARK: - Live Activity Widget
 struct LastRouteWidgetLiveActivity: Widget {
+  @AppStorage("isPlusUser", store: UserDefaults(suiteName: "group.com.matanyah.WalkTracker")) private var isPlusUser: Bool = false
   var body: some WidgetConfiguration {
     ActivityConfiguration(for: LastRouteWidgetAttributes.self) { context in
         let isWalkActive = context.state.isWalking // <-- bool from your activity content state
@@ -23,44 +24,75 @@ struct LastRouteWidgetLiveActivity: Widget {
         let displayDistance = unit ? context.state.distance : context.state.distance * 3.28084
         let displayGoal = unit ? goal : goal * 3.28084
         let unitText = unit ? "meters" : "feet"
-        let unitAbbr = unit ? "m" : "ft"
 
         let progress = displayGoal > 0 ? min(displayDistance / displayGoal, 1.0) : 0.0
         let percentage = progress * 100
 
+      if isPlusUser {
         HStack {
-            VStack(alignment: .leading) {
-                Text("You walked \(displayDistance, specifier: "%.1f") \(unitText) and \(context.state.steps) steps")
-                    .font(.subheadline)
-                    .bold()
-                    .contentTransition(.numericText(value: displayDistance))
-                    .foregroundStyle(Color.black.opacity(0.6))
+          VStack(alignment: .leading) {
+            Text("You walked \(displayDistance, specifier: "%.1f") \(unitText) and \(context.state.steps) steps")
+              .font(.subheadline)
+              .bold()
+              .contentTransition(.numericText(value: displayDistance))
+              .foregroundStyle(Color.black.opacity(0.6))
 
-                if displayGoal > 0 {
-                    ProgressView("You completed \(percentage, specifier: "%.1f")% of your goal", value: progress)
-                        .contentTransition(.numericText(value: percentage))
-                        .font(.subheadline)
-                        .foregroundStyle(Color.black.opacity(0.6))
-                }
+            if displayGoal > 0 {
+              ProgressView("You completed \(percentage, specifier: "%.1f")% of your goal", value: progress)
+                .contentTransition(.numericText(value: percentage))
+                .font(.subheadline)
+                .foregroundStyle(Color.black.opacity(0.6))
             }
+          }
 
-            Link(destination: URL(string: "walking://toggleWalk")!) {
-                Image(systemName: isWalkActive ? "play.circle.fill" : "pause.circle.fill")
-                .font(.title2)
-                    .bold()
-                    .foregroundStyle(Color.black.opacity(0.6))
-            }
+          Link(destination: URL(string: "walking://toggleWalk")!) {
+            Image(systemName: isWalkActive ? "play.circle.fill" : "pause.circle.fill")
+              .font(.title2)
+              .bold()
+              .foregroundStyle(Color.black.opacity(0.6))
+          }
 
-            Link(destination: URL(string: "walking://openCamera")!) {
-                Image(systemName: "camera.circle.fill")
-                .font(.title2)
-                    .bold()
-                    .foregroundStyle(Color.black.opacity(0.6))
-            }
+          Link(destination: URL(string: "walking://openCamera")!) {
+            Image(systemName: "camera.circle.fill")
+              .font(.title2)
+              .bold()
+              .foregroundStyle(Color.black.opacity(0.6))
+          }
         }
         .padding()
         .tint(Color.black.opacity(0.6))
         .activityBackgroundTint(Color.accentFromSettings.opacity(0.8))
+      } else {
+        HStack {
+          VStack(alignment: .leading) {
+            Text("You walked \(displayDistance, specifier: "%.1f") \(unitText) and \(context.state.steps) steps")
+              .font(.subheadline)
+              .bold()
+              .contentTransition(.numericText(value: displayDistance))
+              .foregroundStyle(Color.black.opacity(0.6))
+
+            if displayGoal > 0 {
+              ProgressView("You completed \(percentage, specifier: "%.1f")% of your goal", value: progress)
+                .contentTransition(.numericText(value: percentage))
+                .font(.subheadline)
+                .foregroundStyle(Color.black.opacity(0.6))
+            }
+            Text("You need to buy Walking Plus to use full live activity")
+              .font(.subheadline)
+              .bold()
+              .foregroundStyle(Color.black.opacity(0.6))
+          }
+          Link(destination: URL(string: "walking://toggleWalk")!) {
+            Image(systemName: isWalkActive ? "play.circle.fill" : "pause.circle.fill")
+              .font(.title2)
+              .bold()
+              .foregroundStyle(Color.black.opacity(0.6))
+          }
+        }
+        .padding()
+        .tint(Color.black.opacity(0.6))
+        .activityBackgroundTint(Color.accentFromSettings.opacity(0.8))
+      }
     } dynamicIsland: { context in
       DynamicIsland {
         DynamicIslandExpandedRegion(.leading) {

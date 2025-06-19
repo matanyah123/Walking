@@ -16,7 +16,7 @@ struct StatsBarView: View {
   @AppStorage("unit", store: UserDefaults(suiteName: "group.com.matanyah.WalkTracker")) var unit: Bool = true
   var body: some View {
     ZStack {
-      BlurView(style: .systemUltraThinMaterialDark)
+      BlurView(style: .systemUltraThinMaterial)
         .cornerRadius(10)
         .innerShadow(radius: 10)
         .frame(width: isStatsBarOpen ? .infinity : 75.0,
@@ -127,7 +127,7 @@ struct StatsBarView: View {
 #Preview("Open - Dummy Track Active") {
   @Previewable @State var started: Bool = false
   ZStack{
-    BlurView(style: .systemThinMaterialDark).ignoresSafeArea(.all)
+    BlurView(style: .systemUltraThinMaterial).ignoresSafeArea(.all)
     StatsBarView(
       isStatsBarOpen: .constant(true),
       started: .constant(true), tracking: $started,
@@ -146,13 +146,13 @@ struct StatsBarView: View {
         return motion
       }()
     )
-  }.preferredColorScheme(.dark)
+  }
 }
 
 #Preview("Closed - Dummy Track Active") {
   @Previewable @State var started: Bool = false
   ZStack{
-    BlurView(style: .systemThinMaterialDark).ignoresSafeArea(.all)
+    BlurView(style: .systemUltraThinMaterial).ignoresSafeArea(.all)
     StatsBarView(
       isStatsBarOpen: .constant(false),
       started: .constant(true), tracking: $started,
@@ -171,5 +171,5 @@ struct StatsBarView: View {
         return motion
       }()
     )
-  }.preferredColorScheme(.dark)
+  }
 }
